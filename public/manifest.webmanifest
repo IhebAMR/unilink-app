@@ -1,0 +1,23 @@
+{
+    "name": "Unilink",
+    "short_name": "Unilink",
+    "description": "Unilink — application web progressive, disponible hors-ligne",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#1e90ff",
+    "orientation": "portrait",
+    "icons": [
+      {
+        "src": "/icons/unilink.png",
+        "sizes": "192x192",
+        "type": "image/png"
+      },
+      {
+        "src": "/icons/star.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ]
+  }
