@@ -15,8 +15,7 @@ export default function Page() {
             </p>
 
             <div className="hero-ctas">
-              <a className="btn primary" href="/explore">Découvrir</a>
-              <a className="btn outline" href="/docs">Documentation</a>
+              <a className="btn primary large" href="/start">Commencer</a>
             </div>
 
             <ul className="hero-features" aria-hidden>
