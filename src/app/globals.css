@@ -87,11 +87,27 @@ body {
   text-decoration: none;
   color: var(--text);
   font-weight: 500;
-  transition: color 0.2s;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
   color: var(--primary);
+  background-color: var(--primary-light);
+}
+
+.nav-link-primary {
+  background-color: var(--primary);
+  color: white !important;
+}
+
+.nav-link-primary:hover {
+  background-color: var(--primary-dark);
+  color: white !important;
 }
 
 .nav-actions {
@@ -521,6 +537,47 @@ textarea.edit-field-input {
 .footer { padding: 2rem 0 3rem; text-align: center; color: var(--muted); }
 
 /* Responsive breakpoints */
+@media (max-width: 768px) {
+  .header {
+    flex-wrap: wrap;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .main-nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .main-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .nav-link svg {
+    width: 14px;
+    height: 14px;
+    margin-right: 4px;
+  }
+
+  .user-name {
+    display: none;
+  }
+
+  .nav-actions {
+    gap: 0.5rem;
+  }
+}
+
 @media (min-width: 640px) {
   .hero { grid-template-columns: 1fr 300px; }
   .card-grid { grid-template-columns: repeat(2, 1fr); }
