@@ -2,6 +2,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import MapEditor from '@/app/components/MapEditor';
+import BackButton from '@/app/components/BackButton';
 
 type Point = [number, number];
 
@@ -77,6 +78,8 @@ export default function CreateRidePage() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
+      <BackButton label="Back to Rides" href="/carpools" />
+      
       <h1>Create Ride</h1>
 
       <form onSubmit={handleSubmit}>
