@@ -2,6 +2,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import MapEditor from '@/app/components/MapEditor';
+import BackButton from '@/app/components/BackButton';
 
 export default function CreateRideDemandPage() {
   const router = useRouter();
@@ -69,6 +70,8 @@ export default function CreateRideDemandPage() {
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: 16 }}>
+      <BackButton label="Back to Requests" href="/ride-demands" />
+      
       <h1>Request a Ride</h1>
       <p style={{ color: '#666', marginBottom: 24 }}>
         Looking for a ride? Fill out this form and drivers will see your request.
