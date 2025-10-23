@@ -23,4 +23,4 @@ First, clone the repo and install dependencies:
 ```bash
 git clone https://github.com/IhebAMR/unilink-app.git
 cd unilink-app
-npm install
+npm install **
