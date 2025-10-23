@@ -5,7 +5,7 @@ import { getUserFromRequest } from '@/app/lib/auth';
 // POST /api/ride-demands/:id/offers - Driver offers a ride for this demand
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
@@ -28,7 +28,7 @@ export async function POST(
       return NextResponse.json({ error: 'carpoolRideId is required' }, { status: 400 });
     }
 
-    const demandId = params.id;
+    const { id: demandId } = await params;
     const demand = await RideDemand.findById(demandId).exec();
     
     if (!demand) {
@@ -88,7 +88,7 @@ export async function POST(
 // PATCH /api/ride-demands/:id/offers - Passenger accepts/declines an offer
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
@@ -115,7 +115,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'action must be accept or decline' }, { status: 400 });
     }
 
-    const demandId = params.id;
+    const { id: demandId } = await params;
     const demand = await RideDemand.findById(demandId);
     
     if (!demand) {

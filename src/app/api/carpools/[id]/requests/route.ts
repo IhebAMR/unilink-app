@@ -20,7 +20,7 @@ const getUserModel = async () => {
 // GET - List all ride requests for a specific ride (owner only)
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
   await getUserModel();
@@ -31,7 +31,7 @@ export async function GET(
   }
 
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Invalid ride id' }, { status: 400 });
@@ -67,7 +67,7 @@ export async function GET(
 // POST - Create a new ride booking request
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
 
@@ -77,7 +77,7 @@ export async function POST(
   }
 
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Invalid ride id' }, { status: 400 });
@@ -151,7 +151,7 @@ export async function POST(
 // PATCH - Accept or decline a ride request
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
 
@@ -161,7 +161,7 @@ export async function PATCH(
   }
 
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Invalid ride id' }, { status: 400 });
