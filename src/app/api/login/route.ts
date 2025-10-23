@@ -17,8 +17,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Find user
-    const user = await User.findOne({ email });
+    // Find user and explicitly select the passwordHash field
+    const user = await User.findOne({ email }).select('+passwordHash');
     if (!user) {
       return NextResponse.json(
         { error: 'Email ou mot de passe incorrect' },

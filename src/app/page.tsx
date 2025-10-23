@@ -1,11 +1,9 @@
 import React from 'react';
 import './globals.css';
-import Header from './components/Header';
 
 export default function Page() {
   return (
     <div className="page-root">
-      <Header />
       <main className="main">
         <section className="hero">
           <div className="hero-content">

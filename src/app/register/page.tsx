@@ -28,12 +28,43 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
 
-    // Validation
+    // Client-side validation
+    if (formData.fullName.trim().length < 2) {
+      setError('Le nom doit contenir au moins 2 caractères');
+      setLoading(false);
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Veuillez fournir une adresse email valide');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères');
+      setLoading(false);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Les mots de passe ne correspondent pas');
       setLoading(false);
       return;
     }
+
+    const registrationData = {
+      name: formData.fullName.trim(),
+      email: formData.email.toLowerCase().trim(),
+      password: formData.password,
+    };
+
+    console.log('Sending registration data:', {
+      name: registrationData.name,
+      email: registrationData.email,
+      // password omitted for security
+    });
 
     try {
       const response = await fetch('/api/register', {
@@ -41,22 +72,19 @@ export default function RegisterPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: formData.fullName,
-          email: formData.email,
-          password: formData.password,
-        }),
+        body: JSON.stringify(registrationData),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Une erreur est survenue');
+        throw new Error(data.error || 'Une erreur est survenue lors de l\'inscription');
       }
 
       // Registration successful
       router.push('/login?registered=true');
     } catch (err: any) {
+      console.error('Registration error:', err);
       setError(err.message);
     } finally {
       setLoading(false);

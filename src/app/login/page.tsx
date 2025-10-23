@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import styles from './login.module.css';
 
 export default function LoginPage() {
@@ -107,7 +108,23 @@ export default function LoginPage() {
           >
             {loading ? 'Connexion...' : 'Se connecter'}
           </button>
+          <a href="/forgot-password" className={styles.forgotPassword}>
+            Mot de passe oublié ?
+          </a>
         </form>
+
+        <div className={styles.divider}>ou</div>
+
+        <button
+          type="button"
+          className={styles.googleButton}
+          onClick={() => signIn('google', { callbackUrl: '/' })}
+          disabled={loading}
+        >
+          <img src="/google-icon.svg" alt="Google" className={styles.googleIcon} />
+          Se connecter avec Google
+        </button>
+
         <p className={styles.registerLink}>
           Pas encore de compte ? <a href="/register">S'inscrire</a>
         </p>

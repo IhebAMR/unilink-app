@@ -1,6 +1,8 @@
 import './globals.css';
 import RegisterSW from './registerSW';
-//import RegisterSW from './registerSW.tsx';
+import Header from './components/Header';
+import { SessionProvider } from 'next-auth/react';
+import AuthProvider from './components/AuthProvider';
 
 export const metadata = {
   title: 'Unilink',
@@ -16,9 +18,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icons/unilink.png" />
       </head>
       <body>
-        {/* Client component below will register the SW (only on client) */}
-        <RegisterSW />
-        {children}
+        <AuthProvider>
+          {/* Client component below will register the SW (only on client) */}
+          <RegisterSW />
+          <div className="flex flex-col min-h-screen">
+            <Header />
+            <main className="flex-grow">
+              {children}
+            </main>
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );
