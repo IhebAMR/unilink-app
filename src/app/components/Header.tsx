@@ -21,6 +21,7 @@ export default function Header() {
   const [notificationCount, setNotificationCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [showCarpoolDropdown, setShowCarpoolDropdown] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -146,34 +147,126 @@ export default function Header() {
       </div>
 
       <nav className="main-nav" aria-label="Navigation principale">
-        <Link href="/carpools" className="nav-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6, verticalAlign: 'middle' }}>
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-          Browse Rides
-        </Link>
-        <Link href="/carpools/create" className="nav-link nav-link-primary">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6, verticalAlign: 'middle' }}>
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Offer a Ride
-        </Link>
-        <Link href="/ride-demands" className="nav-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6, verticalAlign: 'middle' }}>
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 6v6l4 2"/>
-          </svg>
-          Ride Requests
-        </Link>
-        <Link href="/ride-demands/create" className="nav-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6, verticalAlign: 'middle' }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Request a Ride
-        </Link>
+        {/* Carpooling Dropdown */}
+        <div 
+          style={{ position: 'relative' }}
+          onMouseEnter={() => setShowCarpoolDropdown(true)}
+          onMouseLeave={() => setShowCarpoolDropdown(false)}
+        >
+          <button className="nav-link nav-link-primary" style={{ border: 'none', cursor: 'pointer' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6, verticalAlign: 'middle' }}>
+              <path d="M5 17h14v-4l-1.5-4.5h-11L5 13v4z"/>
+              <circle cx="7" cy="17" r="2"/>
+              <circle cx="17" cy="17" r="2"/>
+            </svg>
+            Carpooling
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 4, verticalAlign: 'middle' }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          
+          {showCarpoolDropdown && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              backgroundColor: 'white',
+              border: '1px solid #e0e0e0',
+              borderRadius: 8,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              minWidth: 220,
+              marginTop: 8,
+              zIndex: 1000,
+              overflow: 'hidden'
+            }}>
+              <Link href="/carpools" style={{ textDecoration: 'none' }}>
+                <div style={{
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  color: '#333'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                  <span style={{ fontWeight: 500 }}>Browse Rides</span>
+                </div>
+              </Link>
+              
+              <Link href="/carpools/create" style={{ textDecoration: 'none' }}>
+                <div style={{
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  color: '#333'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  <span style={{ fontWeight: 500 }}>Offer a Ride</span>
+                </div>
+              </Link>
+              
+              <div style={{ borderTop: '1px solid #e0e0e0', margin: '4px 0' }}></div>
+              
+              <Link href="/ride-demands" style={{ textDecoration: 'none' }}>
+                <div style={{
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  color: '#333'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                  </svg>
+                  <span style={{ fontWeight: 500 }}>Ride Requests</span>
+                </div>
+              </Link>
+              
+              <Link href="/ride-demands/create" style={{ textDecoration: 'none' }}>
+                <div style={{
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  color: '#333'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  <span style={{ fontWeight: 500 }}>Request a Ride</span>
+                </div>
+              </Link>
+            </div>
+          )}
+        </div>
       </nav>
 
       <div className="nav-actions">

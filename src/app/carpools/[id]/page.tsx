@@ -2,6 +2,7 @@
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import MapPreview from '@/app/components/MapPreview';
+import BackButton from '@/app/components/BackButton';
 
 export default function RideDetailPage() {
   const params = useParams(); // recommended in client components
@@ -197,6 +198,8 @@ export default function RideDetailPage() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
+      <BackButton label="Back to Rides" href="/carpools" />
+      
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
           <h1 style={{ margin: 0 }}>{ride.title || 'Ride'}</h1>

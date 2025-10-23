@@ -2,6 +2,7 @@
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import MapPreview from '@/app/components/MapPreview';
+import BackButton from '@/app/components/BackButton';
 
 export default function RideDemandDetailPage() {
   const params = useParams();
@@ -192,6 +193,8 @@ export default function RideDemandDetailPage() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
+      <BackButton label="Back to Requests" href="/ride-demands" />
+      
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
           <h1 style={{ margin: 0 }}>{demand.title || 'Ride Request'}</h1>
