@@ -1,8 +1,16 @@
 'use client';
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import MapEditor from '@/app/components/MapEditor';
+import dynamic from 'next/dynamic';
 import BackButton from '@/app/components/BackButton';
+import PageSection from '@/app/components/ui/PageSection';
+import FormField from '@/app/components/ui/FormField';
+import Input from '@/app/components/ui/Input';
+import Textarea from '@/app/components/ui/Textarea';
+import Button from '@/app/components/ui/Button';
+import Select from '@/app/components/ui/Select';
+
+const MapEditor = dynamic(() => import('@/app/components/MapEditor').then(mod => mod.default), { ssr: false });
 
 type Point = [number, number];
 
@@ -79,69 +87,52 @@ export default function CreateRidePage() {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
       <BackButton label="Back to Rides" href="/carpools" />
-      
-      <h1>Create Ride</h1>
+      <PageSection
+        title="Create Ride"
+        description="Offer a ride by specifying route, time, seats and optional notes."
+        actions={<Button variant="neutral" href="/carpools">Cancel</Button>}
+      >
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <FormField label="Title" description="Optional short name for your ride" htmlFor="ride-title">
+            <Input id="ride-title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Morning Campus Shuttle" />
+          </FormField>
 
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <label>Title (optional)</label>
-          <input value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%' }} />
-        </div>
+          <FormField label="Origin Address *" description="Where passengers will be picked up" htmlFor="origin-address" required>
+            <Input id="origin-address" value={originAddress} onChange={e => setOriginAddress(e.target.value)} placeholder="123 Main St" required />
+          </FormField>
 
-        <div style={{ marginBottom: 12 }}>
-          <label>Origin Address *</label>
-          <input 
-            value={originAddress} 
-            onChange={e => setOriginAddress(e.target.value)} 
-            placeholder="Starting point address"
-            required
-            style={{ width: '100%' }} 
-          />
-        </div>
+            <FormField label="Destination Address *" description="Where the ride ends" htmlFor="dest-address" required>
+            <Input id="dest-address" value={destAddress} onChange={e => setDestAddress(e.target.value)} placeholder="University Campus" required />
+          </FormField>
 
-        <div style={{ marginBottom: 12 }}>
-          <label>Destination Address *</label>
-          <input 
-            value={destAddress} 
-            onChange={e => setDestAddress(e.target.value)} 
-            placeholder="Ending point address"
-            required
-            style={{ width: '100%' }} 
-          />
-        </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+            <FormField label="Date & Time *" htmlFor="date-time" required>
+              <Input id="date-time" type="datetime-local" value={dateTime} onChange={e => setDateTime(e.target.value)} required />
+            </FormField>
+            <FormField label="Seats" htmlFor="seats-total" description="Total seats available" required>
+              <Input id="seats-total" type="number" min={1} value={seatsTotal} onChange={e => setSeatsTotal(Number(e.target.value))} />
+            </FormField>
+            <FormField label="Price per passenger" htmlFor="price" description="Set 0 for free ride">
+              <Input id="price" type="number" min={0} value={price} onChange={e => setPrice(Number(e.target.value))} />
+            </FormField>
+          </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <label>Date & time</label>
-          <input type="datetime-local" value={dateTime} onChange={e => setDateTime(e.target.value)} />
-        </div>
+          <FormField label="Notes" htmlFor="notes" description="Anything riders should know (luggage space, music, etc.)">
+            <Textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="I can take small luggage." />
+          </FormField>
 
-        <div style={{ marginBottom: 12 }}>
-          <label>Seats</label>
-          <input type="number" min={1} value={seatsTotal} onChange={e => setSeatsTotal(Number(e.target.value))} />
-        </div>
+          <FormField label="Route" description="Click on the map to add waypoints from origin to destination">
+            <MapEditor initialCoords={[]} onChange={(c) => setCoords(c)} height={360} />
+          </FormField>
 
-        <div style={{ marginBottom: 12 }}>
-          <label>Price (per passenger)</label>
-          <input type="number" min={0} value={price} onChange={e => setPrice(Number(e.target.value))} />
-        </div>
+          {error && <div style={{ color: 'red', fontSize: '.9rem' }}>{error}</div>}
 
-        <div style={{ marginBottom: 12 }}>
-          <label>Notes</label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} style={{ width: '100%' }} />
-        </div>
-
-        <div style={{ marginBottom: 12 }}>
-          <label>Draw route on map (click to add waypoints)</label>
-          <MapEditor initialCoords={[]} onChange={(c) => setCoords(c)} height={360} />
-        </div>
-
-        {error && <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>}
-
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create Ride'}</button>
-          <button type="button" onClick={() => router.push('/carpools')}>Cancel</button>
-        </div>
-      </form>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <Button type="submit" variant="success" disabled={loading}>{loading ? 'Creating...' : 'Create Ride'}</Button>
+            <Button type="button" variant="outline" onClick={() => router.push('/carpools')}>Cancel</Button>
+          </div>
+        </form>
+      </PageSection>
     </div>
   );
 }

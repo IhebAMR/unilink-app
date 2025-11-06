@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import styles from './dashboard.module.css';
 
 interface User {
   _id: string;
@@ -14,10 +15,27 @@ interface User {
   lastLogin?: string;
 }
 
+interface DashboardStats {
+  totalUsers: number;
+  activeUsers: number;
+  bannedUsers: number;
+  adminUsers: number;
+}
+
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterRole, setFilterRole] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    activeUsers: 0,
+    bannedUsers: 0,
+    adminUsers: 0,
+  });
   const router = useRouter();
 
   useEffect(() => {
@@ -61,6 +79,16 @@ export default function AdminDashboard() {
           lastLogin: user.lastLogin || ''
         }));
         setUsers(processedUsers);
+        setFilteredUsers(processedUsers);
+        
+        // Calculate stats
+        const statsData: DashboardStats = {
+          totalUsers: processedUsers.length,
+          activeUsers: processedUsers.filter((u: User) => !u.isBanned).length,
+          bannedUsers: processedUsers.filter((u: User) => u.isBanned).length,
+          adminUsers: processedUsers.filter((u: User) => u.role === 'admin').length,
+        };
+        setStats(statsData);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -70,6 +98,33 @@ export default function AdminDashboard() {
 
     checkAdminAndLoadUsers();
   }, [router]);
+
+  useEffect(() => {
+    // Apply filters
+    let filtered = users;
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(user =>
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Role filter
+    if (filterRole !== 'all') {
+      filtered = filtered.filter(user => user.role === filterRole);
+    }
+
+    // Status filter
+    if (filterStatus === 'active') {
+      filtered = filtered.filter(user => !user.isBanned);
+    } else if (filterStatus === 'banned') {
+      filtered = filtered.filter(user => user.isBanned);
+    }
+
+    setFilteredUsers(filtered);
+  }, [searchTerm, filterRole, filterStatus, users]);
 
   const handleBanUser = async (userId: string, isBanned: boolean) => {
     try {
@@ -96,99 +151,301 @@ export default function AdminDashboard() {
       setUsers(users.map(user => 
         user._id === userId ? { ...user, isBanned } : user
       ));
+      
+      // Update stats
+      const updatedUsers = users.map(user => 
+        user._id === userId ? { ...user, isBanned } : user
+      );
+      setStats({
+        totalUsers: updatedUsers.length,
+        activeUsers: updatedUsers.filter(u => !u.isBanned).length,
+        bannedUsers: updatedUsers.filter(u => u.isBanned).length,
+        adminUsers: updatedUsers.filter(u => u.role === 'admin').length,
+      });
     } catch (err: any) {
       setError(err.message);
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.spinner}></div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="flex justify-center items-center min-h-screen text-red-600">{error}</div>;
+    return (
+      <div className={styles.errorContainer}>
+        <div className={styles.errorCard}>
+          <svg className={styles.errorIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <h2 className={styles.errorTitle}>Error</h2>
+          <p className={styles.errorMessage}>{error}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
-      
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Joined
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user._id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
-                        {user.name ? user.name.charAt(0).toUpperCase() : '?'}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name || 'Unnamed User'}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{user.email || 'No email'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
-                    }`}>
-                      {user.role || 'student'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      user.isBanned ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                    }`}>
-                      {user.isBanned ? 'Banned' : 'Active'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {user.role !== 'admin' && (
-                      <button
-                        onClick={() => handleBanUser(user._id, !user.isBanned)}
-                        className={`${
-                          user.isBanned 
-                            ? 'text-green-600 hover:text-green-900' 
-                            : 'text-red-600 hover:text-red-900'
-                        }`}
-                      >
-                        {user.isBanned ? 'Unban' : 'Ban'}
-                      </button>
-                    )}
-                  </td>
+    <div className={styles.dashboardContainer}>
+      <div className={styles.contentWrapper}>
+        {/* Header */}
+        <div className={styles.header}>
+          <h1 className={styles.title}>Admin Dashboard</h1>
+          <p className={styles.subtitle}>Manage users and monitor system statistics</p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className={styles.statsGrid}>
+          {/* Total Users */}
+          <div className={`${styles.statCard} ${styles.blue}`}>
+            <div className={styles.statContent}>
+              <div className={styles.statInfo}>
+                <h3>{stats.totalUsers}</h3>
+                <p>Total Users</p>
+              </div>
+              <div className={styles.statIcon}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Users */}
+          <div className={`${styles.statCard} ${styles.green}`}>
+            <div className={styles.statContent}>
+              <div className={styles.statInfo}>
+                <h3>{stats.activeUsers}</h3>
+                <p>Active Users</p>
+              </div>
+              <div className={styles.statIcon}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Banned Users */}
+          <div className={`${styles.statCard} ${styles.red}`}>
+            <div className={styles.statContent}>
+              <div className={styles.statInfo}>
+                <h3>{stats.bannedUsers}</h3>
+                <p>Banned Users</p>
+              </div>
+              <div className={styles.statIcon}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Admin Users */}
+          <div className={`${styles.statCard} ${styles.purple}`}>
+            <div className={styles.statContent}>
+              <div className={styles.statInfo}>
+                <h3>{stats.adminUsers}</h3>
+                <p>Administrators</p>
+              </div>
+              <div className={styles.statIcon}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className={styles.filterCard}>
+          <div className={styles.filterGrid}>
+            {/* Search */}
+            <div className={styles.filterGroup}>
+              <label>Search Users</label>
+              <div className={styles.searchWrapper}>
+                <svg className={styles.searchIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={styles.searchInput}
+                />
+              </div>
+            </div>
+
+            {/* Role Filter */}
+            <div className={styles.filterGroup}>
+              <label>Filter by Role</label>
+              <select
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+                className={styles.filterSelect}
+              >
+                <option value="all">All Roles</option>
+                <option value="student">Students</option>
+                <option value="admin">Administrators</option>
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div className={styles.filterGroup}>
+              <label>Filter by Status</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className={styles.filterSelect}
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="banned">Banned</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Users Table */}
+        <div className={styles.tableCard}>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Joined</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>
+                      <div className={styles.emptyState}>
+                        <svg className={styles.emptyIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                        </svg>
+                        <p className={styles.emptyTitle}>No users found</p>
+                        <p className={styles.emptyText}>Try adjusting your filters or search term</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <tr key={user._id}>
+                      <td>
+                        <div className={styles.userCell}>
+                          <div className={styles.userAvatar}>
+                            {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <div>
+                            <div className={styles.userName}>{user.name || 'Unnamed User'}</div>
+                            <div className={styles.userId}>#{user._id.slice(-8)}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.emailCell}>
+                          <svg className={styles.emailIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          <span className={styles.emailText}>{user.email || 'No email'}</span>
+                        </div>
+                      </td>
+                      <td>
+                        {user.role === 'admin' ? (
+                          <span className={`${styles.badge} ${styles.badgeAdmin}`}>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                            Administrator
+                          </span>
+                        ) : (
+                          <span className={`${styles.badge} ${styles.badgeStudent}`}>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            Student
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {user.isBanned ? (
+                          <span className={`${styles.badge} ${styles.badgeBanned}`}>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                            Banned
+                          </span>
+                        ) : (
+                          <span className={`${styles.badge} ${styles.badgeActive}`}>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <div className={styles.dateCell}>
+                          <svg className={styles.dateIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          }) : 'Unknown'}
+                        </div>
+                      </td>
+                      <td>
+                        {user.role !== 'admin' && (
+                          <button
+                            onClick={() => handleBanUser(user._id, !user.isBanned)}
+                            className={`${styles.actionBtn} ${user.isBanned ? styles.btnUnban : styles.btnBan}`}
+                          >
+                            {user.isBanned ? (
+                              <>
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>Unban</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                </svg>
+                                <span>Ban</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Results Count */}
+          {filteredUsers.length > 0 && (
+            <div className={styles.resultsFooter}>
+              <p className={styles.resultsText}>
+                Showing <span className={styles.resultsCount}>{filteredUsers.length}</span> of{' '}
+                <span className={styles.resultsCount}>{users.length}</span> users
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

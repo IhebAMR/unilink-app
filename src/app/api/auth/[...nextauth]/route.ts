@@ -3,7 +3,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import clientPromise from "@/app/lib/mongodb";
 
-const handler = NextAuth({
+const authConfig = {
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GoogleProvider({
@@ -13,26 +13,41 @@ const handler = NextAuth({
         params: {
           prompt: "select_account",
           access_type: "offline",
-          response_type: "code"
-        }
-      }
+          response_type: "code",
+        },
+      },
     }),
   ],
+  allowDangerousEmailAccountLinking: true as const,
   adapter: MongoDBAdapter(clientPromise),
   callbacks: {
-    async session({ session, user }) {
+    async session({ session, user }: any) {
       // Add user ID to the session
-      session.user.id = user.id;
+      if (session.user) {
+        (session.user as any).id = user.id;
+      }
       return session;
     },
-    async signIn({ profile }) {
-      return true; // Allow all sign-ins
+    async signIn({ account }: any) {
+      // Allow all Google sign-ins
+      if (account?.provider === "google") {
+        return true;
+      }
+      return true;
+    },
+    async redirect({ url, baseUrl }: any) {
+      // Always redirect to home page after sign in
+      if (url.startsWith("/")) return url;
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
   },
   pages: {
-    signIn: '/login',
-    error: '/login',
+    signIn: "/login",
+    error: "/login",
   },
-});
+  debug: process.env.NODE_ENV === "development",
+};
 
-export { handler as GET, handler as POST };
+const auth = NextAuth(authConfig);
+export const { GET, POST } = auth.handlers;

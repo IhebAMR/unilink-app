@@ -3,6 +3,10 @@ import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import MapPreview from '@/app/components/MapPreview';
 import BackButton from '@/app/components/BackButton';
+import Button from '@/app/components/ui/Button';
+import Badge from '@/app/components/ui/Badge';
+import Card from '@/app/components/ui/Card';
+import PageSection from '@/app/components/ui/PageSection';
 
 export default function RideDetailPage() {
   const params = useParams(); // recommended in client components
@@ -181,11 +185,11 @@ export default function RideDetailPage() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div style={{ padding: 16 }}>Loading...</div>;
   if (error) return (
     <div style={{ padding: 16 }}>
       <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>
-      <button onClick={() => router.push('/carpools')}>Back to list</button>
+      <Button onClick={() => router.push('/carpools')} variant="outline">Back to list</Button>
     </div>
   );
   if (!ride) return <div>Ride not found.</div>;
@@ -199,78 +203,51 @@ export default function RideDetailPage() {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
       <BackButton label="Back to Rides" href="/carpools" />
-      
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-        <div>
-          <h1 style={{ margin: 0 }}>{ride.title || 'Ride'}</h1>
-          <div style={{ 
-            marginTop: 8,
-            padding: '4px 12px',
-            borderRadius: 4,
-            display: 'inline-block',
-            fontSize: '0.85rem',
-            fontWeight: 'bold',
-            backgroundColor: rideStatus === 'open' ? '#4CAF50' : rideStatus === 'full' ? '#FF9800' : '#999',
-            color: 'white'
-          }}>
-            {rideStatus === 'open' ? '✓ Available' : rideStatus === 'full' ? 'FULL' : rideStatus.toUpperCase()}
+
+      <PageSection style={{ marginTop: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <div>
+            <h1 style={{ margin: 0 }}>{ride.title || 'Ride'}</h1>
+            <div style={{ marginTop: 8 }}>
+              <Badge variant={rideStatus === 'open' ? 'success' : rideStatus === 'full' ? 'warning' : 'neutral'}>
+                {rideStatus === 'open' ? '✓ Available' : rideStatus === 'full' ? 'FULL' : rideStatus.toUpperCase()}
+              </Badge>
+            </div>
           </div>
+          {isOwner && (
+            <Button onClick={handleDelete} disabled={deleting} variant="danger">
+              {deleting ? 'Deleting…' : 'Delete Ride'}
+            </Button>
+          )}
         </div>
-        {isOwner && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            style={{
-              backgroundColor: '#f44336',
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: 4,
-              cursor: deleting ? 'not-allowed' : 'pointer',
-              opacity: deleting ? 0.6 : 1
-            }}
-          >
-            {deleting ? 'Deleting...' : 'Delete Ride'}
-          </button>
+
+        {ride.ownerId && typeof ride.ownerId === 'object' && (
+          <div style={{ marginBottom: 12, fontSize: '0.9rem', color: '#666' }}>
+            Offered by: {ride.ownerId.name || ride.ownerId.email}
+          </div>
         )}
-      </div>
 
-      {ride.ownerId && typeof ride.ownerId === 'object' && (
-        <div style={{ marginBottom: 12, fontSize: '0.9rem', color: '#666' }}>
-          Offered by: {ride.ownerId.name || ride.ownerId.email}
+        <div style={{ display: 'grid', gap: 6 }}>
+          <div>Date: {ride.dateTime ? new Date(ride.dateTime).toLocaleString() : '—'}</div>
+          <div>Seats Available: <strong>{ride.seatsAvailable ?? 0}</strong> / {ride.seatsTotal ?? 0}</div>
         </div>
-      )}
 
-      <div>Date: {ride.dateTime ? new Date(ride.dateTime).toLocaleString() : '—'}</div>
-      <div>Seats Available: <strong>{ride.seatsAvailable ?? 0}</strong> / {ride.seatsTotal ?? 0}</div>
+        <div style={{ marginTop: 12 }}>
+          <MapPreview coords={ride.route?.coordinates || []} height={360} zoom={12} />
+        </div>
 
-      <div style={{ marginTop: 12 }}>
-        <MapPreview coords={ride.route?.coordinates || []} height={360} zoom={12} />
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        <p>{ride.notes}</p>
-      </div>
+        {ride.notes && (
+          <div style={{ marginTop: 12 }}>
+            <p style={{ margin: 0 }}>{ride.notes}</p>
+          </div>
+        )}
+      </PageSection>
 
       {/* Book Ride Button for Non-Owners */}
       {!isOwner && currentUserId && isAvailable && (
-        <div style={{ marginTop: 16, padding: 16, backgroundColor: '#f5f5f5', borderRadius: 6 }}>
+        <Card style={{ marginTop: 16 }}>
           {!showBookingForm ? (
-            <button
-              onClick={() => setShowBookingForm(true)}
-              style={{
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: 4,
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 'bold'
-              }}
-            >
-              Book This Ride
-            </button>
+            <Button variant="success" onClick={() => setShowBookingForm(true)}>Book This Ride</Button>
           ) : (
             <div>
               <h3 style={{ marginTop: 0 }}>Request to join this ride</h3>
@@ -306,43 +283,20 @@ export default function RideDetailPage() {
                 style={{ width: '100%', minHeight: 80, padding: 8, borderRadius: 4, border: '1px solid #ddd' }}
               />
               <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                <button
-                  onClick={handleBookRide}
-                  disabled={booking}
-                  style={{
-                    backgroundColor: '#4CAF50',
-                    color: 'white',
-                    border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: 4,
-                    cursor: booking ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {booking ? 'Sending...' : `Request ${seatsRequested} ${seatsRequested === 1 ? 'Seat' : 'Seats'}`}
-                </button>
-                <button
-                  onClick={() => { setShowBookingForm(false); setBookingMessage(''); setSeatsRequested(1); }}
-                  style={{
-                    backgroundColor: '#999',
-                    color: 'white',
-                    border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: 4,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
+                <Button onClick={handleBookRide} disabled={booking} variant="success">
+                  {booking ? 'Sending…' : `Request ${seatsRequested} ${seatsRequested === 1 ? 'Seat' : 'Seats'}`}
+                </Button>
+                <Button onClick={() => { setShowBookingForm(false); setBookingMessage(''); setSeatsRequested(1); }} variant="neutral">Cancel</Button>
               </div>
             </div>
           )}
-        </div>
+        </Card>
       )}
 
       {!isAvailable && !isOwner && (
-        <div style={{ marginTop: 16, padding: 12, backgroundColor: '#fff3cd', borderRadius: 6, color: '#856404' }}>
-          This ride is no longer available for booking.
-        </div>
+        <PageSection style={{ marginTop: 16 }}>
+          <Badge variant="warning">This ride is no longer available for booking.</Badge>
+        </PageSection>
       )}
 
       {/* Ride Requests (Owner Only) */}
@@ -351,12 +305,7 @@ export default function RideDetailPage() {
           <h2>Ride Requests</h2>
           <div style={{ display: 'grid', gap: 12 }}>
             {requests.map(req => (
-              <div key={req._id} style={{ 
-                border: '1px solid #ddd', 
-                padding: 16, 
-                borderRadius: 6,
-                backgroundColor: req.status === 'pending' ? '#fff' : req.status === 'accepted' ? '#e8f5e9' : '#ffebee'
-              }}>
+              <Card key={req._id} style={{ backgroundColor: req.status === 'pending' ? '#fff' : req.status === 'accepted' ? '#e8f5e9' : '#ffebee' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <div style={{ fontWeight: 'bold' }}>
@@ -374,55 +323,24 @@ export default function RideDetailPage() {
                       {new Date(req.createdAt).toLocaleString()}
                     </div>
                   </div>
-                  <div style={{ 
-                    padding: '4px 12px',
-                    borderRadius: 4,
-                    fontSize: '0.85rem',
-                    fontWeight: 'bold',
-                    backgroundColor: req.status === 'pending' ? '#FFC107' : req.status === 'accepted' ? '#4CAF50' : '#f44336',
-                    color: 'white'
-                  }}>
+                  <Badge variant={req.status === 'pending' ? 'warning' : req.status === 'accepted' ? 'success' : 'danger'}>
                     {req.status.toUpperCase()}
-                  </div>
+                  </Badge>
                 </div>
                 {req.status === 'pending' && (
                   <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={() => handleRequestAction(req._id, 'accept')}
-                      style={{
-                        backgroundColor: '#4CAF50',
-                        color: 'white',
-                        border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: 4,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Accept
-                    </button>
-                    <button
-                      onClick={() => handleRequestAction(req._id, 'decline')}
-                      style={{
-                        backgroundColor: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: 4,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Decline
-                    </button>
+                    <Button onClick={() => handleRequestAction(req._id, 'accept')} size="sm" variant="success">Accept</Button>
+                    <Button onClick={() => handleRequestAction(req._id, 'decline')} size="sm" variant="danger">Decline</Button>
                   </div>
                 )}
-              </div>
+              </Card>
             ))}
           </div>
         </div>
       )}
 
       <div style={{ marginTop: 16 }}>
-        <button onClick={() => router.push('/carpools')}>Back to list</button>
+        <Button onClick={() => router.push('/carpools')} variant="outline">Back to list</Button>
       </div>
     </div>
   );

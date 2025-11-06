@@ -19,8 +19,12 @@ export default function RegisterSW() {
       navigator.serviceWorker
         .register(swUrl)
         .then((registration) => {
-          // logged so you can see it in the browser console
-          console.log('Service Worker enregistré:', registration);
+          // Check for updates every 60 seconds
+          setInterval(() => {
+            registration.update();
+          }, 60000);
+
+          console.log('Service Worker registered:', registration);
 
           registration.onupdatefound = () => {
             const installing = registration.installing;
@@ -28,16 +32,24 @@ export default function RegisterSW() {
             installing.onstatechange = () => {
               if (installing.state === 'installed') {
                 if (navigator.serviceWorker.controller) {
-                  // nouvelle version disponible
-                  window.dispatchEvent(new Event('swUpdated'));
+                  // New version available - skip waiting to activate immediately
+                  console.log('New service worker version available!');
+                  installing.postMessage({ type: 'SKIP_WAITING' });
+                  window.location.reload();
                 } else {
-                  console.log('Contenu mis en cache pour utilisation hors-ligne.');
+                  console.log('Content cached for offline use.');
                 }
               }
             };
           };
         })
-        .catch((err) => console.error('Erreur d\'enregistrement du SW:', err));
+        .catch((err) => console.error('SW registration error:', err));
+    });
+
+    // Listen for controller change (new SW activated)
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      console.log('Service Worker updated, reloading page...');
+      window.location.reload();
     });
   }, []);
 

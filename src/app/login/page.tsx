@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import styles from './login.module.css';
 
-export default function LoginPage() {
+// Avoid static prerender to prevent Suspense requirement for useSearchParams during build
+export const dynamic = 'force-dynamic';
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,7 +24,17 @@ export default function LoginPage() {
     if (searchParams?.get('registered') === 'true') {
       setSuccess('Inscription réussie! Veuillez vous connecter.');
     }
+    if (searchParams?.get('error') === 'OAuthAccountNotLinked') {
+      setError('Ce compte Google est déjà associé à un autre compte. Essayez de vous connecter avec votre email et mot de passe.');
+    }
   }, [searchParams]);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push('/');
+    }
+  }, [status, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -53,13 +67,15 @@ export default function LoginPage() {
       // Save user data in localStorage
       localStorage.setItem('user', JSON.stringify(data.user));
       
+      // Dispatch custom event to notify Header component
+      window.dispatchEvent(new Event('userLogin'));
+      
       // Show success message
       setSuccess('Connexion réussie!');
       
-      // Redirect to home page after a short delay
-      setTimeout(() => {
-        router.push('/');
-      }, 1500);
+      // Redirect immediately without delay
+      router.push('/');
+      router.refresh(); // Force refresh to update the Header
       
     } catch (err: any) {
       setError(err.message);
@@ -130,5 +146,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div />}> 
+      <LoginContent />
+    </Suspense>
   );
 }

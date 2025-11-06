@@ -3,6 +3,11 @@ import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import MapPreview from '@/app/components/MapPreview';
 import BackButton from '@/app/components/BackButton';
+import Button from '@/app/components/ui/Button';
+import Badge from '@/app/components/ui/Badge';
+import Card from '@/app/components/ui/Card';
+import PageSection from '@/app/components/ui/PageSection';
+import Modal from '@/app/components/ui/Modal';
 
 export default function RideDemandDetailPage() {
   const params = useParams();
@@ -171,11 +176,11 @@ export default function RideDemandDetailPage() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div style={{ padding: 16 }}>Loading...</div>;
   if (error) return (
     <div style={{ padding: 16 }}>
       <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>
-      <button onClick={() => router.push('/ride-demands')}>Back to list</button>
+      <Button onClick={() => router.push('/ride-demands')} variant="outline">Back to list</Button>
     </div>
   );
   if (!demand) return <div>Ride demand not found.</div>;
@@ -195,42 +200,20 @@ export default function RideDemandDetailPage() {
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
       <BackButton label="Back to Requests" href="/ride-demands" />
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-        <div>
-          <h1 style={{ margin: 0 }}>{demand.title || 'Ride Request'}</h1>
-          <div
-            style={{
-              marginTop: 8,
-              padding: '4px 12px',
-              borderRadius: 4,
-              display: 'inline-block',
-              fontSize: '0.85rem',
-              fontWeight: 'bold',
-              backgroundColor: demand.status === 'open' ? '#4CAF50' : '#999',
-              color: 'white'
-            }}
-          >
-            {demand.status.toUpperCase()}
+      <PageSection style={{ marginTop: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <div>
+            <h1 style={{ margin: 0 }}>{demand.title || 'Ride Request'}</h1>
+            <div style={{ marginTop: 8 }}>
+              <Badge variant={demand.status === 'open' ? 'success' : 'neutral'}>{demand.status.toUpperCase()}</Badge>
+            </div>
           </div>
+          {isOwner && (
+            <Button onClick={handleDelete} disabled={deleting} variant="danger">
+              {deleting ? 'Deleting…' : 'Delete Request'}
+            </Button>
+          )}
         </div>
-        {isOwner && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            style={{
-              backgroundColor: '#f44336',
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: 4,
-              cursor: deleting ? 'not-allowed' : 'pointer',
-              opacity: deleting ? 0.6 : 1
-            }}
-          >
-            {deleting ? 'Deleting...' : 'Delete Request'}
-          </button>
-        )}
-      </div>
 
       {demand.passengerId && typeof demand.passengerId === 'object' && (
         <div style={{ marginBottom: 12, fontSize: '0.9rem', color: '#666' }}>
@@ -273,40 +256,20 @@ export default function RideDemandDetailPage() {
       )}
 
       <div style={{ marginTop: 24, display: 'flex', gap: 8 }}>
-        <button onClick={() => router.push('/ride-demands')}>Back to list</button>
+        <Button onClick={() => router.push('/ride-demands')} variant="outline">Back to list</Button>
         {!isOwner && demand.status === 'open' && (
-          <button
-            style={{
-              backgroundColor: '#4CAF50',
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-            onClick={() => setShowOfferDialog(true)}
-          >
-            Offer a Ride
-          </button>
+          <Button variant="success" onClick={() => setShowOfferDialog(true)}>Offer a Ride</Button>
         )}
       </div>
 
+      </PageSection>
+
       {/* Offers Section */}
       {demand.offers && demand.offers.length > 0 && (
-        <div style={{ marginTop: 32, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 8 }}>
+        <PageSection style={{ marginTop: 32 }}>
           <h3>Ride Offers ({demand.offers.length})</h3>
           {demand.offers.map((offer: any) => (
-            <div
-              key={offer._id}
-              style={{
-                backgroundColor: 'white',
-                padding: 16,
-                marginTop: 12,
-                borderRadius: 8,
-                border: '1px solid #ddd'
-              }}
-            >
+            <Card key={offer._id} style={{ marginTop: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
@@ -320,205 +283,98 @@ export default function RideDemandDetailPage() {
                   <div style={{ fontSize: '0.85rem', color: '#999' }}>
                     Offered: {new Date(offer.offeredAt).toLocaleString()}
                   </div>
-                  <div
-                    style={{
-                      marginTop: 8,
-                      padding: '4px 8px',
-                      borderRadius: 4,
-                      display: 'inline-block',
-                      fontSize: '0.8rem',
-                      fontWeight: 'bold',
-                      backgroundColor:
-                        offer.status === 'accepted' ? '#4CAF50' :
-                        offer.status === 'declined' ? '#f44336' : '#ff9800',
-                      color: 'white'
-                    }}
-                  >
+                  <Badge variant={offer.status === 'accepted' ? 'success' : offer.status === 'declined' ? 'danger' : 'warning'}>
                     {offer.status.toUpperCase()}
-                  </div>
+                  </Badge>
                 </div>
                 {isOwner && offer.status === 'pending' && (
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={() => handleOfferAction(offer._id, 'accept')}
-                      style={{
-                        backgroundColor: '#4CAF50',
-                        color: 'white',
-                        border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      Accept
-                    </button>
-                    <button
-                      onClick={() => handleOfferAction(offer._id, 'decline')}
-                      style={{
-                        backgroundColor: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      Decline
-                    </button>
+                    <Button onClick={() => handleOfferAction(offer._id, 'accept')} size="sm" variant="success">Accept</Button>
+                    <Button onClick={() => handleOfferAction(offer._id, 'decline')} size="sm" variant="danger">Decline</Button>
                   </div>
                 )}
               </div>
               {offer.carpoolRideId && (
-                <button
-                  onClick={() => router.push(`/carpools/${offer.carpoolRideId}`)}
-                  style={{
-                    marginTop: 12,
-                    backgroundColor: '#1e90ff',
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 12px',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                    fontSize: '0.85rem'
-                  }}
-                >
+                <Button onClick={() => router.push(`/carpools/${offer.carpoolRideId}`)} variant="primary" size="sm" style={{ marginTop: 12 }}>
                   View Ride Details
-                </button>
+                </Button>
               )}
-            </div>
+            </Card>
           ))}
-        </div>
+        </PageSection>
       )}
 
       {/* Offer Dialog */}
-      {showOfferDialog && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
-          onClick={() => setShowOfferDialog(false)}
-        >
-          <div
-            style={{
-              backgroundColor: 'white',
-              padding: 24,
-              borderRadius: 12,
-              maxWidth: 500,
-              width: '90%',
-              maxHeight: '80vh',
-              overflowY: 'auto'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ marginTop: 0 }}>Offer a Ride</h3>
-            
-            {myRides.length === 0 ? (
-              <div>
-                <p>You don't have any available rides to offer.</p>
-                <button
-                  onClick={() => router.push('/carpools/create')}
-                  style={{
-                    backgroundColor: '#1e90ff',
-                    color: 'white',
-                    border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                    marginTop: 12
-                  }}
-                >
-                  Create a Ride
-                </button>
-              </div>
-            ) : (
-              <div>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                    Select a ride to offer:
-                  </label>
-                  <select
-                    value={selectedRide}
-                    onChange={(e) => setSelectedRide(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: 8,
-                      borderRadius: 4,
-                      border: '1px solid #ddd'
-                    }}
-                  >
-                    <option value="">-- Select a ride --</option>
-                    {myRides.map((ride) => (
-                      <option key={ride._id} value={ride._id}>
-                        {ride.title} - {new Date(ride.dateTime).toLocaleDateString()} ({ride.seatsAvailable} seats available)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                    Message (optional):
-                  </label>
-                  <textarea
-                    value={offerMessage}
-                    onChange={(e) => setOfferMessage(e.target.value)}
-                    placeholder="Add a message for the passenger..."
-                    rows={4}
-                    style={{
-                      width: '100%',
-                      padding: 8,
-                      borderRadius: 4,
-                      border: '1px solid #ddd',
-                      resize: 'vertical'
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button
-                    onClick={() => setShowOfferDialog(false)}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: 4,
-                      border: '1px solid #ddd',
-                      background: 'white',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleOfferRide}
-                    disabled={submitting || !selectedRide}
-                    style={{
-                      backgroundColor: '#4CAF50',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: 4,
-                      cursor: submitting || !selectedRide ? 'not-allowed' : 'pointer',
-                      opacity: submitting || !selectedRide ? 0.6 : 1
-                    }}
-                  >
-                    {submitting ? 'Sending...' : 'Send Offer'}
-                  </button>
-                </div>
-              </div>
-            )}
+      <Modal
+        open={showOfferDialog}
+        onClose={() => setShowOfferDialog(false)}
+        title="Offer a Ride"
+      >
+        {myRides.length === 0 ? (
+          <div>
+            <p>You don't have any available rides to offer.</p>
+            <Button onClick={() => router.push('/carpools/create')} variant="primary" style={{ marginTop: 12 }}>
+              Create a Ride
+            </Button>
           </div>
-        </div>
-      )}
+        ) : (
+          <div>
+            <div style={{ marginBottom: 16 }}>
+              <label htmlFor="ride-select" style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+                Select a ride to offer:
+              </label>
+              <select
+                id="ride-select"
+                value={selectedRide}
+                onChange={(e) => setSelectedRide(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 4,
+                  border: '1px solid #ddd',
+                  fontSize: '16px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="">-- Select a ride --</option>
+                {myRides.map((ride) => (
+                  <option key={ride._id} value={ride._id}>
+                    {ride.title} - {new Date(ride.dateTime).toLocaleDateString()} ({ride.seatsAvailable} seats available)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label htmlFor="offer-message" style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+                Message (optional):
+              </label>
+              <textarea
+                id="offer-message"
+                value={offerMessage}
+                onChange={(e) => setOfferMessage(e.target.value)}
+                placeholder="Add a message for the passenger..."
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: 8,
+                  borderRadius: 4,
+                  border: '1px solid #ddd',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button onClick={() => setShowOfferDialog(false)} variant="outline">Cancel</Button>
+              <Button onClick={handleOfferRide} disabled={submitting || !selectedRide} variant="success">
+                {submitting ? 'Sending…' : 'Send Offer'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

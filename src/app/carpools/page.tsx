@@ -2,6 +2,12 @@
 import React from 'react';
 import Link from 'next/link';
 import MapPreview from '@/app/components/MapPreview';
+import Button from '@/app/components/ui/Button';
+import Card from '@/app/components/ui/Card';
+import Badge from '@/app/components/ui/Badge';
+import PageSection from '@/app/components/ui/PageSection';
+import { saveMyRides, getMyRides, saveUserId, getUserId } from '@/app/lib/offlineStorage';
+import { useOnlineStatus } from '@/app/lib/useOnlineStatus';
 
 type Ride = {
   _id: string;
@@ -18,18 +24,46 @@ type Ride = {
 };
 
 export default function CarpoolsListPage() {
+  const networkOnline = useOnlineStatus();
   const [myRides, setMyRides] = React.useState<Ride[]>([]);
   const [otherRides, setOtherRides] = React.useState<Ride[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [filterStatus, setFilterStatus] = React.useState<'all' | 'available' | 'full'>('all');
   const [activeTab, setActiveTab] = React.useState<'browse' | 'my-rides'>('browse');
+  const [isOffline, setIsOffline] = React.useState(false);
 
   React.useEffect(() => {
     let mounted = true;
     (async () => {
       try {
+        // If network is offline, load from cache immediately
+        if (!networkOnline) {
+          const cachedMyRides = await getMyRides();
+          if (mounted && cachedMyRides.length > 0) {
+            setMyRides(cachedMyRides);
+            setIsOffline(true);
+            setLoading(false);
+          }
+          return;
+        }
+
         const res = await fetch('/api/carpools', { credentials: 'include' });
-        if (!res.ok) throw new Error('Failed to fetch');
+        
+        // Check if this is a cached response
+        const isCached = res.headers.get('X-Cached-Response') === 'true';
+        
+        if (!res.ok && !isCached) {
+          // If network failed, try to load from IndexedDB
+          const cachedMyRides = await getMyRides();
+          
+          if (mounted && cachedMyRides.length > 0) {
+            setMyRides(cachedMyRides);
+            setIsOffline(true);
+            setLoading(false);
+          }
+          throw new Error('Failed to fetch');
+        }
+        
         const json = await res.json();
         
         if (mounted) {
@@ -49,15 +83,34 @@ export default function CarpoolsListPage() {
           
           setMyRides(my);
           setOtherRides(others);
+          setIsOffline(isCached || !networkOnline);
+          
+          // Save to IndexedDB for offline access
+          if (currentUserId && my.length > 0) {
+            try {
+              await saveMyRides(my);
+              await saveUserId(currentUserId);
+            } catch (err) {
+              console.error('Failed to save to IndexedDB:', err);
+            }
+          }
         }
       } catch (err) {
         console.error(err);
+        // Load from IndexedDB as fallback
+        if (mounted) {
+          const cachedMyRides = await getMyRides();
+          if (cachedMyRides.length > 0) {
+            setMyRides(cachedMyRides);
+            setIsOffline(true);
+          }
+        }
       } finally {
         if (mounted) setLoading(false);
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [networkOnline]);
 
   const handleDelete = async (rideId: string) => {
     if (!confirm('Are you sure you want to delete this ride?')) return;
@@ -87,34 +140,12 @@ export default function CarpoolsListPage() {
     const isAvailable = rideStatus === 'open' && r.seatsAvailable > 0;
     
     return (
-      <div key={r._id} style={{ 
-        border: '1px solid #e0e0e0', 
-        padding: 16, 
-        borderRadius: 12, 
-        display: 'flex', 
-        gap: 16,
-        backgroundColor: 'white',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        transition: 'all 0.2s',
-        opacity: isAvailable ? 1 : 0.7,
-        position: 'relative'
-      }}>
+      <Card key={r._id} style={{ display: 'flex', gap: 16, opacity: isAvailable ? 1 : 0.7, position: 'relative' }}>
         {/* Status Badge */}
-        <div style={{ 
-          position: 'absolute',
-          top: 12,
-          right: 12,
-          padding: '4px 12px',
-          borderRadius: 20,
-          fontSize: '0.75rem',
-          fontWeight: 'bold',
-          backgroundColor: isAvailable ? '#4CAF50' : rideStatus === 'full' ? '#FF9800' : '#999',
-          color: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4
-        }}>
-          {isAvailable ? '✓ Available' : rideStatus === 'full' ? '⊗ Full' : rideStatus.toUpperCase()}
+        <div style={{ position: 'absolute', top: 12, right: 12 }}>
+          <Badge variant={isAvailable ? 'success' : rideStatus === 'full' ? 'warning' : 'neutral'}>
+            {isAvailable ? '✓ Available' : rideStatus === 'full' ? 'Full' : rideStatus.toUpperCase()}
+          </Badge>
         </div>
 
         {/* Map Preview */}
@@ -171,40 +202,13 @@ export default function CarpoolsListPage() {
 
           {/* Actions */}
           <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
-            <Link href={`/carpools/${r._id}`}>
-              <button style={{
-                backgroundColor: '#2196F3',
-                color: 'white',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontWeight: 500,
-                fontSize: '0.95rem'
-              }}>
-                {isOwn ? 'Manage Ride' : 'View & Book'}
-              </button>
-            </Link>
+            <Button href={`/carpools/${r._id}`} variant="primary">{isOwn ? 'Manage Ride' : 'View & Book'}</Button>
             {isOwn && (
-              <button
-                onClick={() => handleDelete(r._id)}
-                style={{
-                  backgroundColor: '#f44336',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  fontSize: '0.95rem'
-                }}
-              >
-                🗑️ Delete
-              </button>
+              <Button onClick={() => handleDelete(r._id)} variant="danger">🗑️ Delete</Button>
             )}
           </div>
         </div>
-      </div>
+      </Card>
     );
   };
 
@@ -225,76 +229,36 @@ export default function CarpoolsListPage() {
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: 16, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      {/* Offline Warning */}
+      {isOffline && (
+        <PageSection>
+          <Badge variant="warning">You are offline - Showing your saved rides only</Badge>
+        </PageSection>
+      )}
+      
       {/* Header */}
-      <div style={{ 
-        backgroundColor: 'white', 
-        padding: 24, 
-        borderRadius: 12, 
-        marginBottom: 24,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div>
-            <h1 style={{ margin: '0 0 8px 0', fontSize: '2rem' }}>🚗 Carpooling</h1>
-            <p style={{ margin: 0, color: '#666' }}>Find rides or offer your own</p>
-          </div>
-          <Link href="/carpools/create">
-            <button style={{
-              backgroundColor: '#4CAF50',
-              color: 'white',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '1rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8
-            }}>
-              <span style={{ fontSize: '1.2rem' }}>+</span> Offer a Ride
-            </button>
-          </Link>
-        </div>
-
+      <PageSection
+        title="🚗 Carpooling"
+        description="Find rides or offer your own"
+        actions={<Button href="/carpools/create" variant="success">+ Offer a Ride</Button>}
+        style={{ marginBottom: 24 }}
+      >
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 8, borderBottom: '2px solid #e0e0e0' }}>
-          <button
+          <Button
+            variant={activeTab === 'browse' ? 'primary' : 'ghost'}
             onClick={() => setActiveTab('browse')}
-            style={{
-              padding: '12px 24px',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '1rem',
-              borderBottom: activeTab === 'browse' ? '3px solid #2196F3' : '3px solid transparent',
-              color: activeTab === 'browse' ? '#2196F3' : '#666',
-              transition: 'all 0.2s',
-              marginBottom: '-2px'
-            }}
           >
             🔍 Browse Rides ({otherRides.length})
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={activeTab === 'my-rides' ? 'success' : 'ghost'}
             onClick={() => setActiveTab('my-rides')}
-            style={{
-              padding: '12px 24px',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '1rem',
-              borderBottom: activeTab === 'my-rides' ? '3px solid #4CAF50' : '3px solid transparent',
-              color: activeTab === 'my-rides' ? '#4CAF50' : '#666',
-              transition: 'all 0.2s',
-              marginBottom: '-2px'
-            }}
           >
             🚙 My Rides ({myRides.length})
-          </button>
+          </Button>
         </div>
-      </div>
+      </PageSection>
 
       {loading && (
         <div style={{ textAlign: 'center', padding: 48, fontSize: '1.2rem', color: '#666' }}>
@@ -305,53 +269,31 @@ export default function CarpoolsListPage() {
       {!loading && (
         <>
           {/* Filters */}
-          <div style={{ 
-            backgroundColor: 'white', 
-            padding: 16, 
-            borderRadius: 12, 
-            marginBottom: 24,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16
-          }}>
-            <span style={{ fontWeight: 600, color: '#666' }}>Filter:</span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['all', 'available', 'full'] as const).map(status => (
-                <button
-                  key={status}
-                  onClick={() => setFilterStatus(status)}
-                  style={{
-                    padding: '8px 16px',
-                    border: filterStatus === status ? '2px solid #2196F3' : '1px solid #ddd',
-                    backgroundColor: filterStatus === status ? '#E3F2FD' : 'white',
-                    color: filterStatus === status ? '#2196F3' : '#666',
-                    borderRadius: 20,
-                    cursor: 'pointer',
-                    fontWeight: filterStatus === status ? 600 : 400,
-                    fontSize: '0.9rem',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {status === 'all' && '🔘 All'}
-                  {status === 'available' && '✓ Available'}
-                  {status === 'full' && '⊗ Full'}
-                </button>
-              ))}
+          <PageSection style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontWeight: 600, color: '#666' }}>Filter:</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {(['all', 'available', 'full'] as const).map(status => (
+                  <Button
+                    key={status}
+                    variant={filterStatus === status ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => setFilterStatus(status)}
+                  >
+                    {status === 'all' && '🔘 All'}
+                    {status === 'available' && '✓ Available'}
+                    {status === 'full' && '⊗ Full'}
+                  </Button>
+                ))}
+              </div>
             </div>
-          </div>
+          </PageSection>
 
           {/* Browse Rides Tab */}
           {activeTab === 'browse' && (
             <div>
               {filteredOtherRides.length === 0 ? (
-                <div style={{ 
-                  backgroundColor: 'white', 
-                  padding: 48, 
-                  borderRadius: 12,
-                  textAlign: 'center',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-                }}>
+                <PageSection style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '3rem', marginBottom: 16 }}>🚗</div>
                   <h3 style={{ margin: '0 0 8px 0', color: '#333' }}>No rides found</h3>
                   <p style={{ margin: 0, color: '#666' }}>
@@ -359,7 +301,7 @@ export default function CarpoolsListPage() {
                       ? 'Try changing the filter or check back later.' 
                       : 'Be the first to offer a ride!'}
                   </p>
-                </div>
+                </PageSection>
               ) : (
                 <div style={{ display: 'grid', gap: 16 }}>
                   {filteredOtherRides.map(r => renderRideCard(r, false))}
@@ -372,13 +314,7 @@ export default function CarpoolsListPage() {
           {activeTab === 'my-rides' && (
             <div>
               {filteredMyRides.length === 0 ? (
-                <div style={{ 
-                  backgroundColor: 'white', 
-                  padding: 48, 
-                  borderRadius: 12,
-                  textAlign: 'center',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-                }}>
+                <PageSection style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '3rem', marginBottom: 16 }}>🚙</div>
                   <h3 style={{ margin: '0 0 8px 0', color: '#333' }}>
                     {myRides.length === 0 ? "You haven't offered any rides yet" : 'No rides match the filter'}
@@ -389,22 +325,9 @@ export default function CarpoolsListPage() {
                       : 'Try changing the filter.'}
                   </p>
                   {myRides.length === 0 && (
-                    <Link href="/carpools/create">
-                      <button style={{
-                        backgroundColor: '#4CAF50',
-                        color: 'white',
-                        border: 'none',
-                        padding: '12px 24px',
-                        borderRadius: 8,
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        fontSize: '1rem'
-                      }}>
-                        + Offer a Ride
-                      </button>
-                    </Link>
+                    <Button href="/carpools/create" variant="success">+ Offer a Ride</Button>
                   )}
-                </div>
+                </PageSection>
               ) : (
                 <div style={{ display: 'grid', gap: 16 }}>
                   {filteredMyRides.map(r => renderRideCard(r, true))}

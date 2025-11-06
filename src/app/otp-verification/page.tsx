@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styles from './otpVerification.module.css';
 
-export default function OtpVerificationPage() {
+// Avoid static prerender to prevent Suspense requirement for useSearchParams during build
+export const dynamic = 'force-dynamic';
+
+function OtpVerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams?.get('email');
@@ -147,5 +150,13 @@ export default function OtpVerificationPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OtpVerificationPage() {
+  return (
+    <Suspense fallback={<div />}> 
+      <OtpVerifyContent />
+    </Suspense>
   );
 }

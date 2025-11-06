@@ -1,8 +1,15 @@
 'use client';
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import MapEditor from '@/app/components/MapEditor';
+import dynamic from 'next/dynamic';
 import BackButton from '@/app/components/BackButton';
+import PageSection from '@/app/components/ui/PageSection';
+import FormField from '@/app/components/ui/FormField';
+import Input from '@/app/components/ui/Input';
+import Textarea from '@/app/components/ui/Textarea';
+import Button from '@/app/components/ui/Button';
+
+const MapEditor = dynamic(() => import('@/app/components/MapEditor').then(mod => mod.default), { ssr: false });
 
 export default function CreateRideDemandPage() {
   const router = useRouter();
@@ -71,161 +78,60 @@ export default function CreateRideDemandPage() {
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: 16 }}>
       <BackButton label="Back to Requests" href="/ride-demands" />
-      
-      <h1>Request a Ride</h1>
-      <p style={{ color: '#666', marginBottom: 24 }}>
-        Looking for a ride? Fill out this form and drivers will see your request.
-      </p>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>
-            Title (Optional)
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g., Daily commute to campus"
-            style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }}
-          />
-        </div>
+      <PageSection
+        title="Request a Ride"
+        description="Looking for a ride? Fill out this form and drivers will see your request."
+        actions={<Button variant="neutral" href="/ride-demands">Cancel</Button>}
+      >
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <FormField label="Title (Optional)" htmlFor="rd-title">
+            <Input id="rd-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Daily commute to campus" />
+          </FormField>
 
-        <div>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>
-            From (Origin) *
-          </label>
-          <input
-            type="text"
-            value={originAddress}
-            onChange={(e) => setOriginAddress(e.target.value)}
-            placeholder="Starting point address"
-            required
-            style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }}
-          />
-        </div>
+          <FormField label="From (Origin) *" htmlFor="rd-origin" required description="Starting point address">
+            <Input id="rd-origin" value={originAddress} onChange={(e) => setOriginAddress(e.target.value)} required />
+          </FormField>
 
-        <div>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>
-            To (Destination) *
-          </label>
-          <input
-            type="text"
-            value={destAddress}
-            onChange={(e) => setDestAddress(e.target.value)}
-            placeholder="Destination address"
-            required
-            style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }}
-          />
-        </div>
+          <FormField label="To (Destination) *" htmlFor="rd-dest" required description="Destination address">
+            <Input id="rd-dest" value={destAddress} onChange={(e) => setDestAddress(e.target.value)} required />
+          </FormField>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>
-              Date & Time *
-            </label>
-            <input
-              type="datetime-local"
-              value={dateTime}
-              onChange={(e) => setDateTime(e.target.value)}
-              required
-              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+            <FormField label="Date & Time *" htmlFor="rd-datetime" required>
+              <Input id="rd-datetime" type="datetime-local" value={dateTime} onChange={(e) => setDateTime(e.target.value)} required />
+            </FormField>
+            <FormField label="Seats Needed" htmlFor="rd-seats" description="How many seats you need">
+              <Input id="rd-seats" type="number" value={seatsNeeded} onChange={(e) => setSeatsNeeded(Number(e.target.value))} min={1} max={8} />
+            </FormField>
+            <FormField label="Maximum Price (Optional)" htmlFor="rd-maxprice">
+              <Input id="rd-maxprice" type="number" value={maxPrice} onChange={(e) => setMaxPrice(Number(e.target.value))} min={0} step={0.01} placeholder="0.00" />
+            </FormField>
           </div>
 
-          <div>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>
-              Seats Needed
-            </label>
-            <input
-              type="number"
-              value={seatsNeeded}
-              onChange={(e) => setSeatsNeeded(Number(e.target.value))}
-              min="1"
-              max="8"
-              required
-              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }}
+          <FormField label="Additional Notes" htmlFor="rd-notes">
+            <Textarea id="rd-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any special requirements or details..." rows={4} />
+          </FormField>
+
+          <FormField label="Location (Optional)" description="Click on the map to set origin and destination points">
+            <MapEditor
+              onChange={(coords: [number, number][]) => {
+                if (coords.length >= 2) {
+                  setOriginCoords(coords[0]);
+                  setDestCoords(coords.at(-1) || null);
+                }
+              }}
             />
+          </FormField>
+
+          <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+            <Button type="submit" variant="primary" disabled={submitting}>
+              {submitting ? 'Creating...' : 'Create Ride Request'}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => router.push('/ride-demands')}>Cancel</Button>
           </div>
-        </div>
-
-        <div>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>
-            Maximum Price (Optional)
-          </label>
-          <input
-            type="number"
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(Number(e.target.value))}
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }}
-          />
-        </div>
-
-        <div>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>
-            Additional Notes
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Any special requirements or details..."
-            rows={4}
-            style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }}
-          />
-        </div>
-
-        <div style={{ marginTop: 16 }}>
-          <h3>Location (Optional)</h3>
-          <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: 8 }}>
-            Click on the map to set origin and destination points
-          </p>
-          <MapEditor
-            onChange={(coords: [number, number][]) => {
-              if (coords.length >= 2) {
-                setOriginCoords(coords[0]);
-                setDestCoords(coords.at(-1) || null);
-              }
-            }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              flex: 1,
-              backgroundColor: '#2196F3',
-              color: 'white',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: 4,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              fontSize: '1rem',
-              fontWeight: 'bold'
-            }}
-          >
-            {submitting ? 'Creating...' : 'Create Ride Request'}
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push('/ride-demands')}
-            style={{
-              backgroundColor: '#999',
-              color: 'white',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: 4,
-              cursor: 'pointer'
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
+        </form>
+      </PageSection>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import './globals.css';
 import RegisterSW from './registerSW';
 import Header from './components/Header';
+import OfflineIndicator from './components/OfflineIndicator';
 import { SessionProvider } from 'next-auth/react';
 import AuthProvider from './components/AuthProvider';
 
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           {/* Client component below will register the SW (only on client) */}
           <RegisterSW />
+          <OfflineIndicator />
           <div className="flex flex-col min-h-screen">
             <Header />
             <main className="flex-grow">

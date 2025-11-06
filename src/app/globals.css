@@ -61,7 +61,7 @@ body {
   border-bottom: 1px solid #eaeaea;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 2000; /* ensure header and its dropdowns sit above page content */
 }
 
 .logo {
@@ -587,4 +587,16 @@ textarea.edit-field-input {
 @media (min-width: 1024px) {
   .card-grid { grid-template-columns: repeat(3, 1fr); }
   .hero { gap: 2rem; }
+}
+
+/* Offline indicator animation */
+@keyframes slideDown {
+  from {
+    transform: translateX(-50%) translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
 }

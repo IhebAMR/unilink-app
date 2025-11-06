@@ -1,7 +1,7 @@
 import * as jwt from 'jsonwebtoken';
 import type { JwtPayload } from 'jsonwebtoken';
 import { cookies } from 'next/headers';
-import cookie from 'cookie';
+import * as cookie from 'cookie';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const TOKEN_NAME = 'unilink_token';

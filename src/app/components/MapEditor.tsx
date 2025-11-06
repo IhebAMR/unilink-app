@@ -1,8 +1,7 @@
 'use client';
 import 'leaflet/dist/leaflet.css';
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
+import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 
 type Point = [number, number]; // [lng, lat]
 
@@ -12,81 +11,57 @@ interface MapEditorProps {
   height?: number;
 }
 
-function ClickHandler({ onAdd }: { onAdd: (latlng: L.LatLng) => void }) {
-  useMapEvents({
-    click(e) {
-      onAdd(e.latlng);
-    },
-  });
-  return null;
+interface MapEditorContentProps {
+  initialCoords?: Point[];
+  onChange?: (coords: Point[]) => void;
+  height?: number;
 }
 
-export default function MapEditor({ initialCoords = [], onChange, height = 300 }: MapEditorProps) {
-  const [coords, setCoords] = React.useState<Point[]>(initialCoords);
-
-  React.useEffect(() => {
-    onChange?.(coords);
-  }, [coords, onChange]);
-
-  const addPoint = (latlng: L.LatLng) => {
-    // Clamp coordinates to valid ranges
-    // Longitude: -180 to 180
-    let lng = latlng.lng;
-    while (lng > 180) lng -= 360;
-    while (lng < -180) lng += 360;
-    
-    // Latitude: -90 to 90 (should already be valid from Leaflet, but clamp just in case)
-    const lat = Math.max(-90, Math.min(90, latlng.lat));
-    
-    // convert to [lng, lat]
-    setCoords(prev => [...prev, [lng, lat]]);
-  };
-
-  const undo = () => setCoords(prev => prev.slice(0, -1));
-  const clear = () => setCoords([]);
-
-  const center: [number, number] = coords.length ? [coords[0][1], coords[0][0]] : [36.8065, 10.1815]; // [lat, lng] default (Tunis example)
-
-  // Leaflet Marker icon fix (default icon paths)
-  const DefaultIcon = L.icon({
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-  });
-  // @ts-ignore
-  L.Marker.prototype.options.icon = DefaultIcon;
-
-  return (
-    <div>
-      <div style={{ height }}>
-        <MapContainer center={center as any} zoom={13} style={{ height: '100%', width: '100%' }}>
-          <TileLayer
-            attribution='&copy; OpenStreetMap contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <ClickHandler onAdd={addPoint} />
-          {coords.map((p, i) => (
-            <Marker key={`${p[0]}-${p[1]}-${i}`} position={[p[1], p[0]] as any} />
-          ))}
-          {coords.length >= 2 && (
-            <Polyline positions={coords.map(c => [c[1], c[0]] as any)} color="blue" />
-          )}
-        </MapContainer>
+// Dynamically import map editor content with no SSR
+const MapEditorContent = dynamic(
+  () => import('./MapEditorContent').then(mod => mod.default),
+  { 
+    ssr: false,
+    loading: () => (
+      <div style={{ 
+        height: '300px', 
+        width: '100%', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: '#f3f4f6',
+        borderRadius: '8px'
+      }}>
+        <p style={{ color: '#6b7280' }}>Loading map editor...</p>
       </div>
+    )
+  }
+);
 
-      <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-        <button type="button" onClick={undo} disabled={!coords.length}>
-          Undo
-        </button>
-        <button type="button" onClick={clear} disabled={!coords.length}>
-          Clear
-        </button>
-        <div style={{ marginLeft: 'auto', fontSize: 12, color: '#666' }}>
-          Click map to add waypoints. First point = origin, last point = destination.
+export default function MapEditor({ initialCoords = [], onChange, height = 300 }: MapEditorProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <div style={{ height }}>
+        <div style={{ 
+          height: '100%', 
+          width: '100%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '8px'
+        }}>
+          <p style={{ color: '#6b7280' }}>Loading map editor...</p>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  return <MapEditorContent initialCoords={initialCoords} onChange={onChange} height={height} />;
 }

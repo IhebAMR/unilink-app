@@ -10,14 +10,26 @@
     main{max-width:600px;text-align:center}
     h1{font-size:1.5rem;margin-bottom:.5rem}
     p{color:#555;margin-bottom:1rem}
-    a{display:inline-block;padding:.5rem 1rem;background:var(--primary);color:#fff;border-radius:8px;text-decoration:none}
+    .offline-icon{font-size:4rem;margin-bottom:1rem}
+    a{display:inline-block;padding:.5rem 1rem;background:var(--primary);color:#fff;border-radius:8px;text-decoration:none;margin-top:1rem}
+    .info-box{background:#f0f8ff;border-left:4px solid var(--primary);padding:1rem;margin:1.5rem 0;text-align:left}
+    .info-box strong{display:block;margin-bottom:.5rem}
   </style>
 </head>
 <body>
   <main>
-    <h1>Tu es hors-ligne</h1>
-    <p>La connexion internet est introuvable. Certaines fonctionnalités peuvent être limitées.</p>
-    <a href="/" onclick="location.reload()">Réessayer</a>
+    <div class="offline-icon">📡❌</div>
+    <h1>You are offline</h1>
+    <p>No internet connection available. Some features may be limited.</p>
+    
+    <div class="info-box">
+      <strong>✅ Available offline:</strong>
+      • View your saved rides<br>
+      • View your ride requests<br>
+      • Browse previously loaded content
+    </div>
+    
+    <a href="/" onclick="location.reload()">Retry Connection</a>
   </main>
 </body>
 </html>
