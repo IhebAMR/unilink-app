@@ -23,6 +23,7 @@ export default function RideDetailPage() {
   const [bookingMessage, setBookingMessage] = React.useState('');
   const [seatsRequested, setSeatsRequested] = React.useState(1);
   const [showBookingForm, setShowBookingForm] = React.useState(false);
+  const [myRequest, setMyRequest] = React.useState<any | null>(null);
 
   React.useEffect(() => {
     let mounted = true;
@@ -56,17 +57,21 @@ export default function RideDetailPage() {
           return;
         }
         
-        const rideJson = await rideRes.json();
-        if (mounted) setRide(rideJson);
+  const rideJson = await rideRes.json();
+  // Support both shapes: { ride, currentUserId, myRequest } or legacy ride document
+  const rideDoc = rideJson?.ride ?? rideJson;
+  if (mounted) setRide(rideDoc);
+  if (mounted && rideJson?.currentUserId) setCurrentUserId(rideJson.currentUserId);
+  if (mounted && rideJson?.myRequest) setMyRequest(rideJson.myRequest);
         
         // Get current user ID
         if (userRes.ok) {
           const userData = await userRes.json();
-          if (mounted) setCurrentUserId(userData.currentUserId);
+          if (mounted && !rideJson?.currentUserId) setCurrentUserId(userData.currentUserId);
           
           // If user is the owner, fetch ride requests
-          const isOwner = userData.currentUserId && rideJson.ownerId && 
-            (typeof rideJson.ownerId === 'string' ? rideJson.ownerId === userData.currentUserId : rideJson.ownerId._id === userData.currentUserId);
+          const isOwner = userData.currentUserId && rideDoc.ownerId && 
+            (typeof rideDoc.ownerId === 'string' ? rideDoc.ownerId === userData.currentUserId : rideDoc.ownerId._id === userData.currentUserId);
           
           if (isOwner) {
             try {
@@ -121,6 +126,11 @@ export default function RideDetailPage() {
 
   const handleBookRide = async () => {
     if (!id) return;
+    // Prevent duplicate booking attempts if user already has a pending/accepted request
+    if (myRequest && (myRequest.status === 'pending' || myRequest.status === 'accepted')) {
+      alert(`You already have a ${myRequest.status} request for this ride`);
+      return;
+    }
     
     try {
       setBooking(true);
@@ -137,6 +147,8 @@ export default function RideDetailPage() {
         return;
       }
       
+      const created = await res.json();
+      setMyRequest({ _id: created._id, status: created.status, seatsRequested: created.seatsRequested, createdAt: created.createdAt });
       alert('Ride booking request sent! Waiting for owner approval.');
       setShowBookingForm(false);
       setBookingMessage('');
@@ -176,6 +188,14 @@ export default function RideDetailPage() {
       // Update ride seats if accepted
       if (action === 'accept' && result.ride) {
         setRide((prev: any) => ({ ...prev, ...result.ride }));
+        // If the ride became fully reserved / closed as a result of this accept, navigate owner to history
+        const updated = result.ride;
+        const seatsLeft = typeof updated.seatsAvailable === 'number' ? updated.seatsAvailable : undefined;
+        const status = updated.status;
+        if ((typeof seatsLeft === 'number' && seatsLeft <= 0) || status === 'closed' || status === 'full') {
+          // navigate owner (driver) to history when the ride is closed/full
+          router.push('/history');
+        }
       }
       
       alert(result.message);
@@ -199,6 +219,7 @@ export default function RideDetailPage() {
 
   const rideStatus = ride.status || 'open';
   const isAvailable = rideStatus === 'open' && ride.seatsAvailable > 0;
+  const hasMyActiveRequest = !!(myRequest && (myRequest.status === 'pending' || myRequest.status === 'accepted'));
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
@@ -246,18 +267,28 @@ export default function RideDetailPage() {
       {/* Book Ride Button for Non-Owners */}
       {!isOwner && currentUserId && isAvailable && (
         <Card style={{ marginTop: 16 }}>
+          {hasMyActiveRequest && (
+            <div style={{ marginBottom: 8 }}>
+              <Badge variant={myRequest.status === 'accepted' ? 'success' : 'warning'}>
+                You have an {myRequest.status} request for this ride
+              </Badge>
+            </div>
+          )}
           {!showBookingForm ? (
-            <Button variant="success" onClick={() => setShowBookingForm(true)}>Book This Ride</Button>
+            <Button variant="success" onClick={() => setShowBookingForm(true)} disabled={hasMyActiveRequest}>
+              {hasMyActiveRequest ? 'Request already sent' : 'Book This Ride'}
+            </Button>
           ) : (
             <div>
               <h3 style={{ marginTop: 0 }}>Request to join this ride</h3>
               
               {/* Seat Selector */}
               <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>
+                <label htmlFor="seats-select" style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>
                   Number of seats needed:
                 </label>
                 <select
+                  id="seats-select"
                   value={seatsRequested}
                   onChange={(e) => setSeatsRequested(Number(e.target.value))}
                   style={{ 
@@ -283,8 +314,8 @@ export default function RideDetailPage() {
                 style={{ width: '100%', minHeight: 80, padding: 8, borderRadius: 4, border: '1px solid #ddd' }}
               />
               <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                <Button onClick={handleBookRide} disabled={booking} variant="success">
-                  {booking ? 'Sending…' : `Request ${seatsRequested} ${seatsRequested === 1 ? 'Seat' : 'Seats'}`}
+                <Button onClick={handleBookRide} disabled={booking || hasMyActiveRequest} variant="success">
+                  {booking ? 'Sending…' : hasMyActiveRequest ? 'Request already sent' : `Request ${seatsRequested} ${seatsRequested === 1 ? 'Seat' : 'Seats'}`}
                 </Button>
                 <Button onClick={() => { setShowBookingForm(false); setBookingMessage(''); setSeatsRequested(1); }} variant="neutral">Cancel</Button>
               </div>

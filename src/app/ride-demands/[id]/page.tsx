@@ -57,11 +57,16 @@ export default function RideDemandDetailPage() {
           const ridesData = await ridesRes.json();
           if (mounted) {
             setCurrentUserId(ridesData.currentUserId);
-            // Filter only my rides that are still available (status: 'open' means available)
-            const myAvailableRides = ridesData.rides.filter((r: any) => {
-              const rideOwnerId = typeof r.ownerId === 'string' ? r.ownerId : r.ownerId?._id || r.ownerId?.toString();
-              return rideOwnerId === ridesData.currentUserId && (r.status === 'open' || r.status === 'available') && r.seatsAvailable > 0;
-            });
+            // Filter only my rides and annotate whether already offered
+            const myAvailableRides = ridesData.rides
+              .filter((r: any) => {
+                const rideOwnerId = typeof r.ownerId === 'string' ? r.ownerId : r.ownerId?._id || r.ownerId?.toString();
+                return rideOwnerId === ridesData.currentUserId && (r.status === 'open' || r.status === 'available') && r.seatsAvailable > 0;
+              })
+              .map((r: any) => {
+                const alreadyOffered = demandJson?.offers?.some((o: any) => o.driverId && (typeof o.driverId === 'string' ? o.driverId === ridesData.currentUserId : o.driverId._id === ridesData.currentUserId) && o.carpoolRideId === r._id);
+                return { ...r, alreadyOffered };
+              });
             setMyRides(myAvailableRides);
           }
         }
@@ -108,6 +113,12 @@ export default function RideDemandDetailPage() {
       return;
     }
 
+    const rideObj = myRides.find(r => r._id === selectedRide);
+    if (rideObj?.alreadyOffered) {
+      alert('You have already offered this ride to this request');
+      return;
+    }
+
     try {
       setSubmitting(true);
       const res = await fetch(`/api/ride-demands/${id}/offers`, {
@@ -136,6 +147,8 @@ export default function RideDemandDetailPage() {
       if (demandRes.ok) {
         const demandJson = await demandRes.json();
         setDemand(demandJson);
+        // Update myRides alreadyOffered flags
+        setMyRides(prev => prev.map(r => ({ ...r, alreadyOffered: r._id === selectedRide ? true : r.alreadyOffered })));
       }
     } catch (err) {
       console.error('Failed to offer ride', err);
@@ -169,6 +182,11 @@ export default function RideDemandDetailPage() {
       if (demandRes.ok) {
         const demandJson = await demandRes.json();
         setDemand(demandJson);
+        // If the passenger (owner of this demand) accepted an offer, send them to History
+        // This is the case where the requester accepted a driver's offer.
+        if (action === 'accept') {
+          router.push('/history');
+        }
       }
     } catch (err) {
       console.error(`Failed to ${action} offer`, err);
@@ -339,8 +357,8 @@ export default function RideDemandDetailPage() {
               >
                 <option value="">-- Select a ride --</option>
                 {myRides.map((ride) => (
-                  <option key={ride._id} value={ride._id}>
-                    {ride.title} - {new Date(ride.dateTime).toLocaleDateString()} ({ride.seatsAvailable} seats available)
+                  <option key={ride._id} value={ride._id} disabled={ride.alreadyOffered}>
+                    {ride.title} - {new Date(ride.dateTime).toLocaleDateString()} ({ride.seatsAvailable} seats) {ride.alreadyOffered ? '— already offered' : ''}
                   </option>
                 ))}
               </select>
@@ -368,8 +386,8 @@ export default function RideDemandDetailPage() {
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <Button onClick={() => setShowOfferDialog(false)} variant="outline">Cancel</Button>
-              <Button onClick={handleOfferRide} disabled={submitting || !selectedRide} variant="success">
-                {submitting ? 'Sending…' : 'Send Offer'}
+              <Button onClick={handleOfferRide} disabled={submitting || !selectedRide || myRides.find(r => r._id === selectedRide)?.alreadyOffered} variant="success">
+                {submitting ? 'Sending…' : myRides.find(r => r._id === selectedRide)?.alreadyOffered ? 'Already Offered' : 'Send Offer'}
               </Button>
             </div>
           </div>
