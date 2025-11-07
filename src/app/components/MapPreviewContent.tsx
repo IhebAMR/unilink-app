@@ -1,28 +1,28 @@
 'use client';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 type Point = [number, number]; // [lng, lat]
 
 interface MapPreviewContentProps {
-  coords: Point[];
-  zoom: number;
+  coords?: Point[];
+  zoom?: number;
 }
 
-export default function MapPreviewContent({ coords, zoom }: Readonly<MapPreviewContentProps>) {
+export default function MapPreviewContent({ coords = [], zoom = 12 }: MapPreviewContentProps) {
   const [isClient, setIsClient] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
+  const leafletMapRef = useRef<any>(null);
+  const polylineRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+
+  useEffect(() => { setIsClient(true); }, []);
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    if (!isClient || !mapRef.current || leafletMapRef.current) return;
 
-  useEffect(() => {
-    if (!isClient || !mapRef.current) return;
-
-    // Dynamically import Leaflet and initialize the map
-    const initMap = async () => {
+    const init = async () => {
       const L = (await import('leaflet')).default;
-      
+
       // Fix default icon paths
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -31,77 +31,79 @@ export default function MapPreviewContent({ coords, zoom }: Readonly<MapPreviewC
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
       });
 
-      const center: [number, number] = coords.length ? [coords[0][1], coords[0][0]] : [36.8065, 10.1815];
+      const first = coords[0];
+      const center: [number, number] = first ? [first[1], first[0]] : [36.8065, 10.1815]; // Tunis fallback
 
-      // Clear any existing map
-      if (mapRef.current) {
-        mapRef.current.innerHTML = '';
-      }
+      const mapEl = mapRef.current!;
+      mapEl.innerHTML = '';
 
-      // Create map
-      const mapElement = mapRef.current;
-      if (!mapElement) return;
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const leafletMap = L.map(mapElement as HTMLElement, {
-        center: center,
-        zoom: zoom,
-        dragging: false,
-        touchZoom: false,
-        scrollWheelZoom: false,
-        doubleClickZoom: false,
-        zoomControl: false,
-      });
+      const map = L.map(mapEl, { center, zoom });
+      leafletMapRef.current = map;
 
-      // Add tile layer
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
-      }).addTo(leafletMap);
+      }).addTo(map);
 
-      // Add markers
-      if (coords.length >= 1) {
-        L.marker([coords[0][1], coords[0][0]]).addTo(leafletMap);
-      }
-      const lastCoord = coords.at(-1);
-      if (coords.length >= 2 && lastCoord) {
-        L.marker([lastCoord[1], lastCoord[0]]).addTo(leafletMap);
-      }
-
-      // Add polyline
-      if (coords.length >= 2) {
-        const latLngs: [number, number][] = coords.map(c => [c[1], c[0]]);
-        L.polyline(latLngs, { color: 'blue' }).addTo(leafletMap);
-      }
+      // Draw initial features
+      drawFeatures();
     };
 
-    initMap();
-  }, [isClient, coords, zoom]);
+    init();
+
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClient]);
+
+  const drawFeatures = async () => {
+    if (!leafletMapRef.current) return;
+    const L = (await import('leaflet')).default;
+    const map = leafletMapRef.current;
+
+    // Clear existing
+    markersRef.current.forEach(m => m.remove());
+    markersRef.current = [];
+    if (polylineRef.current) { polylineRef.current.remove(); polylineRef.current = null; }
+
+    if (!coords.length) return;
+
+    // Markers for endpoints
+    const start = coords[0];
+    const end = coords[coords.length - 1];
+    const startMarker = L.marker([start[1], start[0]]).addTo(map);
+    markersRef.current.push(startMarker);
+    if (end && (end[0] !== start[0] || end[1] !== start[1])) {
+      const endMarker = L.marker([end[1], end[0]]).addTo(map);
+      markersRef.current.push(endMarker);
+    }
+
+    // Polyline
+    if (coords.length >= 2) {
+      const latlngs: [number, number][] = coords.map(c => [c[1], c[0]]);
+      polylineRef.current = L.polyline(latlngs, { color: 'blue' }).addTo(map);
+      // Fit bounds
+      const bounds = L.latLngBounds(latlngs.map(([lat, lng]) => [lat, lng] as [number, number]));
+      map.fitBounds(bounds, { padding: [24, 24] });
+    }
+  };
+
+  useEffect(() => {
+    // Update features when coords change
+    drawFeatures();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coords.map(c => c.join(',')) .join('|')]);
 
   if (!isClient) {
     return (
-      <div style={{ 
-        height: '100%', 
-        width: '100%', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        backgroundColor: '#f3f4f6',
-        borderRadius: '8px'
-      }}>
+      <div style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6', borderRadius: 8 }}>
         <p style={{ color: '#6b7280' }}>Loading map...</p>
       </div>
     );
   }
 
-  return (
-    <div 
-      ref={mapRef} 
-      style={{ 
-        height: '100%', 
-        width: '100%',
-        borderRadius: '8px',
-        overflow: 'hidden'
-      }} 
-    />
-  );
+  return <div ref={mapRef} style={{ height: '100%', width: '100%', borderRadius: 8, overflow: 'hidden' }} />;
 }
