@@ -5,11 +5,13 @@ export interface CardProps {
   children: React.ReactNode;
   style?: React.CSSProperties;
   hoverable?: boolean;
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-export default function Card({ children, style, hoverable }: CardProps) {
+export default function Card({ children, style, hoverable, onClick }: CardProps) {
   return (
     <div
+      onClick={onClick}
       style={{
         background: "#fff",
         border: "1px solid #e5e7eb",

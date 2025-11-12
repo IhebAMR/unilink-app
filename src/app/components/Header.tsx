@@ -187,74 +187,85 @@ export default function Header() {
         </Link>
       </div>
 
-      <nav className="main-nav" aria-label="Navigation principale">
-        <div ref={carpoolRef} style={{ position: 'relative' }}>
-          <button
-            type="button"
-            className="nav-link nav-link-primary"
-            aria-haspopup="true"
-            aria-expanded={showCarpoolDropdown}
-            onClick={() => {
-              setShowCarpoolDropdown(v => !v);
-              // compute drop direction on next paint
-              requestAnimationFrame(() => {
-                const btn = carpoolButtonRef.current;
-                if (!btn) return;
-                const rect = btn.getBoundingClientRect();
-                // Always open downward
-                setDropUpCarpool(false);
-                setMenuCoords({ top: rect.top, bottom: rect.bottom, left: rect.left });
-              });
-            }}
-            style={{ border: 'none', cursor: 'pointer' }}
-            ref={carpoolButtonRef}
-          >
+      <nav className="main-nav flex justify-between gap-4" aria-label="Navigation principale">
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <Link href="/events" className="nav-link nav-link-primary">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6, verticalAlign: 'middle' }}>
-              <path d="M5 17h14v-4l-1.5-4.5h-11L5 13v4z"/>
-              <circle cx="7" cy="17" r="2"/>
-              <circle cx="17" cy="17" r="2"/>
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
-            Carpooling
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 4, verticalAlign: 'middle', transition: 'transform .15s', transform: showCarpoolDropdown ? 'rotate(180deg)' : 'rotate(0)' }}>
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
-          </button>
-          {showCarpoolDropdown && (
-            <>
-              {/* Backdrop for mobile to capture taps and elevate stacking */}
-              {isMobile && (
-                <div
-                  onClick={() => setShowCarpoolDropdown(false)}
-                  style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.08)', zIndex: 10000
-                  }}
-                />
-              )}
-              <div role="menu" aria-label="Carpooling menu" style={{ 
-                position: isMobile ? 'fixed' : 'absolute', 
-                top: isMobile ? (menuCoords ? menuCoords.bottom + 8 : 56) : 'calc(100% + 8px)',
-                bottom: 'auto',
-                left: isMobile ? 12 : 0, 
-                right: isMobile ? 12 : 'auto',
-                backgroundColor: 'white', 
-                border: '1px solid #e0e0e0', 
-                borderRadius: 8, 
-                boxShadow: '0 6px 18px -2px rgba(0,0,0,0.18)', 
-                minWidth: 240, 
-                zIndex: 10001,
-                marginTop: !isMobile ? 4 : 0,
-                marginBottom: 0,
-                maxHeight: isMobile ? '60vh' : 'auto',
-                overflowY: 'auto'
-              }}>
-              <Link href="/carpools" className="dropdown-item" role="menuitem" onClick={() => setShowCarpoolDropdown(false)}>Browse Rides</Link>
-              <Link href="/carpools/create" className="dropdown-item" role="menuitem" onClick={() => setShowCarpoolDropdown(false)}>Offer a Ride</Link>
-              <div style={{ borderTop: '1px solid #e5e7eb', margin: '4px 0' }} />
-              <Link href="/ride-demands" className="dropdown-item" role="menuitem" onClick={() => setShowCarpoolDropdown(false)}>Ride Requests</Link>
-              <Link href="/ride-demands/create" className="dropdown-item" role="menuitem" onClick={() => setShowCarpoolDropdown(false)}>Request a Ride</Link>
-              </div>
-            </>
-          )}
+            Events
+          </Link>
+          <div ref={carpoolRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className="nav-link nav-link-primary"
+              aria-haspopup="true"
+              aria-expanded={showCarpoolDropdown}
+              onClick={() => {
+                setShowCarpoolDropdown(v => !v);
+                // compute drop direction on next paint
+                requestAnimationFrame(() => {
+                  const btn = carpoolButtonRef.current;
+                  if (!btn) return;
+                  const rect = btn.getBoundingClientRect();
+                  // Always open downward
+                  setDropUpCarpool(false);
+                  setMenuCoords({ top: rect.top, bottom: rect.bottom, left: rect.left });
+                });
+              }}
+              style={{ border: 'none', cursor: 'pointer' }}
+              ref={carpoolButtonRef}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6, verticalAlign: 'middle' }}>
+                <path d="M5 17h14v-4l-1.5-4.5h-11L5 13v4z"/>
+                <circle cx="7" cy="17" r="2"/>
+                <circle cx="17" cy="17" r="2"/>
+              </svg>
+              Carpooling
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 4, verticalAlign: 'middle', transition: 'transform .15s', transform: showCarpoolDropdown ? 'rotate(180deg)' : 'rotate(0)' }}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {showCarpoolDropdown && (
+              <>
+                {/* Backdrop for mobile to capture taps and elevate stacking */}
+                {isMobile && (
+                  <div
+                    onClick={() => setShowCarpoolDropdown(false)}
+                    style={{
+                      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.08)', zIndex: 10000
+                    }}
+                  />
+                )}
+                <div role="menu" aria-label="Carpooling menu" style={{ 
+                  position: isMobile ? 'fixed' : 'absolute', 
+                  top: isMobile ? (menuCoords ? menuCoords.bottom + 8 : 56) : 'calc(100% + 8px)',
+                  bottom: 'auto',
+                  left: isMobile ? 12 : 0, 
+                  right: isMobile ? 12 : 'auto',
+                  backgroundColor: 'white', 
+                  border: '1px solid #e0e0e0', 
+                  borderRadius: 8, 
+                  boxShadow: '0 6px 18px -2px rgba(0,0,0,0.18)', 
+                  minWidth: 240, 
+                  zIndex: 10001,
+                  marginTop: !isMobile ? 4 : 0,
+                  marginBottom: 0,
+                  maxHeight: isMobile ? '60vh' : 'auto',
+                  overflowY: 'auto'
+                }}>
+                  <Link href="/carpools" className="dropdown-item" role="menuitem" onClick={() => setShowCarpoolDropdown(false)}>Browse Rides</Link>
+                  <Link href="/carpools/create" className="dropdown-item" role="menuitem" onClick={() => setShowCarpoolDropdown(false)}>Offer a Ride</Link>
+                  <div style={{ borderTop: '1px solid #e5e7eb', margin: '4px 0' }} />
+                  <Link href="/ride-demands" className="dropdown-item" role="menuitem" onClick={() => setShowCarpoolDropdown(false)}>Ride Requests</Link>
+                  <Link href="/ride-demands/create" className="dropdown-item" role="menuitem" onClick={() => setShowCarpoolDropdown(false)}>Request a Ride</Link>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -310,7 +321,13 @@ export default function Header() {
                         key={notif._id}
                         onClick={() => {
                           if (!notif.read) handleMarkAsRead(notif._id);
-                          if (notif.relatedRide) { router.push(`/carpools/${notif.relatedRide}`); setShowNotifications(false); }
+                          if (notif.relatedRide) { 
+                            router.push(`/carpools/${notif.relatedRide}`); 
+                            setShowNotifications(false); 
+                          } else if (notif.relatedEvent) {
+                            router.push(`/events?eventId=${notif.relatedEvent}`);
+                            setShowNotifications(false);
+                          }
                         }}
                         style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', backgroundColor: notif.read ? 'white' : '#f0f8ff', transition: 'background-color 0.2s' }}
                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e8f4fd')}
