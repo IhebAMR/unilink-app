@@ -11,6 +11,7 @@ export async function GET(request: Request) {
     const currentUserId = user?.id || null;
 
     const rides = await CarpoolRide.find({})
+      .populate('ownerId', 'name email')
       .sort({ dateTime: 1 })
       .limit(100)
       .lean()

@@ -73,10 +73,41 @@ export async function POST(request: Request) {
     // Ensure both reviewer and target were participants (or owner)
     const reviewerId = currentUser.id;
     const targetId = userId;
-    const reviewerWasOnRide = String(ride.ownerId) === String(reviewerId) || (Array.isArray(ride.participants) && ride.participants.map(String).includes(String(reviewerId)));
-    const targetWasOnRide = String(ride.ownerId) === String(targetId) || (Array.isArray(ride.participants) && ride.participants.map(String).includes(String(targetId)));
-    if (!reviewerWasOnRide || !targetWasOnRide) {
-      return NextResponse.json({ error: 'Both reviewer and reviewed user must have participated in the ride' }, { status: 400 });
+    
+    // Helper to normalize IDs for comparison
+    const normalizeId = (id: any): string => {
+      if (!id) return '';
+      if (typeof id === 'string') return id;
+      if (id.toString) return id.toString();
+      return String(id);
+    };
+    
+    const rideOwnerId = normalizeId(ride.ownerId);
+    const normalizedReviewerId = normalizeId(reviewerId);
+    const normalizedTargetId = normalizeId(targetId);
+    
+    // Check if reviewer was on the ride (owner or participant)
+    const reviewerWasOwner = rideOwnerId === normalizedReviewerId;
+    const reviewerWasParticipant = Array.isArray(ride.participants) && 
+      ride.participants.some((p: any) => normalizeId(p) === normalizedReviewerId);
+    const reviewerWasOnRide = reviewerWasOwner || reviewerWasParticipant;
+    
+    // Check if target was on the ride (owner or participant)
+    const targetWasOwner = rideOwnerId === normalizedTargetId;
+    const targetWasParticipant = Array.isArray(ride.participants) && 
+      ride.participants.some((p: any) => normalizeId(p) === normalizedTargetId);
+    const targetWasOnRide = targetWasOwner || targetWasParticipant;
+    
+    if (!reviewerWasOnRide) {
+      return NextResponse.json({ 
+        error: 'You must have participated in this ride to leave a review. Only passengers and the driver can review each other.' 
+      }, { status: 400 });
+    }
+    
+    if (!targetWasOnRide) {
+      return NextResponse.json({ 
+        error: 'The user you are trying to review must have participated in this ride.' 
+      }, { status: 400 });
     }
 
     const targetUser = await User.findById(userId);
@@ -91,7 +122,6 @@ export async function POST(request: Request) {
     // Add the new review targeted at the specific ride
     targetUser.reviews = targetUser.reviews || [];
     targetUser.reviews.push({ authorId: currentUser.id, rating: Number(rating), comment, relatedRide });
-    const action: 'created' = 'created';
 
     await targetUser.save();
 
@@ -110,17 +140,25 @@ export async function POST(request: Request) {
       console.error('Failed to create review notification:', nerr);
     }
 
-    // Return fresh aggregated data
+    // Return fresh aggregated data filtered by relatedRide if provided
     const populated: any = await User.findById(userId).populate('reviews.authorId', 'name email avatarUrl').lean();
-    const reviews = (populated?.reviews || []).map((r: any) => ({
+    let allReviews = (populated?.reviews || []);
+    
+    // Filter by relatedRide if provided
+    if (relatedRide) {
+      allReviews = allReviews.filter((r: any) => r.relatedRide && String(r.relatedRide) === String(relatedRide));
+    }
+    
+    const reviews = allReviews.map((r: any) => ({
       _id: r._id,
       author: r.authorId ? { _id: r.authorId._id, name: r.authorId.name, email: r.authorId.email, avatarUrl: r.authorId.avatarUrl } : null,
       rating: r.rating,
       comment: r.comment,
-      createdAt: r.createdAt
+      createdAt: r.createdAt,
+      relatedRide: r.relatedRide
     }));
 
-  const avg = reviews.length ? (reviews.reduce((s: number, x: any) => s + (x.rating || 0), 0) / reviews.length) : 0;
+    const avg = reviews.length ? (reviews.reduce((s: number, x: any) => s + (x.rating || 0), 0) / reviews.length) : 0;
 
     return NextResponse.json({ reviews, averageRating: Number(avg.toFixed(2)), count: reviews.length });
   } catch (err: any) {

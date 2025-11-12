@@ -8,6 +8,7 @@ import Button from '@/app/components/ui/Button';
 import Card from '@/app/components/ui/Card';
 import Badge from '@/app/components/ui/Badge';
 import PageSection from '@/app/components/ui/PageSection';
+import UserRating from '@/app/components/UserRating';
 
 type RideDemand = {
   _id: string;
@@ -171,8 +172,11 @@ export default function RideDemandsPage() {
             </div>
 
             {!isOwn && (
-              <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 8 }}>
-                Requested by: {passengerName}
+              <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Requested by: {passengerName}</span>
+                {demand.passengerId && (
+                  <UserRating userId={demand.passengerId} size={14} showText={true} />
+                )}
               </div>
             )}
 
@@ -204,8 +208,18 @@ export default function RideDemandsPage() {
           </div>
         </div>
 
-        <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button href={`/ride-demands/${demand._id}`} variant="primary" size="sm">View Details</Button>
+          {isOwn && demand.status === 'open' && (
+            <Button 
+              href={`/ride-demands/${demand._id}#ai-matches`} 
+              variant="primary"
+              size="sm"
+              style={{ backgroundColor: '#3b82f6' }}
+            >
+              🤖 Find AI Matches
+            </Button>
+          )}
           {isOwn && (
             <Button onClick={() => handleDelete(demand._id)} variant="danger" size="sm">Delete</Button>
           )}

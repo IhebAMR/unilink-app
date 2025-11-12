@@ -62,6 +62,65 @@ self.addEventListener('message', event => {
   }
 });
 
+// Push notification event listener
+self.addEventListener('push', event => {
+  console.log('[SW] Push notification received');
+  
+  let notificationData = {
+    title: 'Unilink',
+    body: 'You have a new notification',
+    icon: '/icons/unilink.png',
+    badge: '/icons/unilink.png',
+    tag: 'unilink-notification',
+    requireInteraction: false,
+    data: {
+      url: '/'
+    }
+  };
+
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      notificationData = {
+        ...notificationData,
+        ...data,
+        icon: data.icon || '/icons/unilink.png',
+        badge: data.badge || '/icons/unilink.png'
+      };
+    } catch (e) {
+      console.error('[SW] Failed to parse push data:', e);
+      notificationData.body = event.data.text() || 'You have a new notification';
+    }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(notificationData.title, notificationData)
+  );
+});
+
+// Notification click event listener
+self.addEventListener('notificationclick', event => {
+  console.log('[SW] Notification clicked');
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || '/';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      // Check if there's already a window open with this URL
+      for (const client of clientList) {
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If no window is open, open a new one
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
+
 // Helper function to check if URL is a cacheable API route
 function isCacheableApiRoute(url) {
   return CACHEABLE_API_ROUTES.some(route => url.pathname.startsWith(route));

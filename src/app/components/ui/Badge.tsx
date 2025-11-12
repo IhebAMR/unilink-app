@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 
-type Variant = "success" | "warning" | "neutral" | "info" | "danger";
+type Variant = "success" | "warning" | "neutral" | "info" | "danger" | "primary";
 
 export interface BadgeProps {
   variant?: Variant;
@@ -16,10 +16,11 @@ const colors: Record<Variant, { bg: string; text: string }> = {
   neutral: { bg: "#f0f0f0", text: "#555" },
   info: { bg: "#e3f2fd", text: "#1976d2" },
   danger: { bg: "#ffebee", text: "#c62828" },
+  primary: { bg: "#e3f2fd", text: "#1976d2" },
 };
 
 export default function Badge({ variant = "neutral", pill = true, children, style }: BadgeProps) {
-  const theme = colors[variant];
+  const theme = colors[variant] || colors.neutral; // Fallback to neutral if variant is invalid
   return (
     <span
       style={{

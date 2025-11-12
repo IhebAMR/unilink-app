@@ -90,14 +90,24 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
     const ride = await CarpoolRide.findById(id).exec();
     if (!ride) return NextResponse.json({ error: 'Ride not found' }, { status: 404 });
-    if (ride.ownerId.toString() !== user.id) {
-      return NextResponse.json({ error: 'Forbidden: Only owner can complete the ride' }, { status: 403 });
+    
+    // Check if user is the owner or a participant
+    const isOwner = ride.ownerId.toString() === user.id;
+    const isParticipant = ride.participants && Array.isArray(ride.participants) && 
+      ride.participants.some((p: any) => p.toString() === user.id);
+    
+    if (!isOwner && !isParticipant) {
+      return NextResponse.json({ error: 'Forbidden: Only owner or participants can complete the ride' }, { status: 403 });
     }
-    // Optional guard: only after scheduled time
+    
+    // Only allow completion after the scheduled ride date has passed
     const now = new Date();
     if (ride.dateTime && new Date(ride.dateTime) > now) {
-      return NextResponse.json({ error: 'Trip has not started yet' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'Trip has not started yet. You can mark it as completed after the scheduled date.' 
+      }, { status: 400 });
     }
+    
     ride.status = 'completed';
     await ride.save();
     return NextResponse.json({ message: 'Ride marked as completed', ride: { status: ride.status, id: ride._id } }, { status: 200 });

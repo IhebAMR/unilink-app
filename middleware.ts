@@ -30,9 +30,12 @@ export function middleware(req: NextRequest) {
   const token = req.cookies.get('unilink_token')?.value;
   if (!token) {
     const url = req.nextUrl.clone();
+    // Redirect root path and all other unauthenticated requests to login
     if (pathname !== '/login') {
       url.pathname = '/login';
-      url.searchParams.set('from', pathname);
+      if (pathname !== '/') {
+        url.searchParams.set('from', pathname);
+      }
       return NextResponse.redirect(url);
     }
     return NextResponse.next();

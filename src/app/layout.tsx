@@ -3,6 +3,7 @@ import RegisterSW from './registerSW';
 import dynamic from 'next/dynamic';
 import OfflineIndicator from './components/OfflineIndicator';
 import AuthProvider from './components/AuthProvider';
+import PushNotificationManager from './components/PushNotificationManager';
 
 export const metadata = {
   title: 'Unilink',
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { readonly children: React.Reac
         <AuthProvider>
           {/* Client component below will register the SW (only on client) */}
           <RegisterSW />
+          <PushNotificationManager />
           <OfflineIndicator />
           <div className="flex flex-col min-h-screen">
             <Header />

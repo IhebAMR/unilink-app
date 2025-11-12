@@ -8,6 +8,8 @@ import Badge from '@/app/components/ui/Badge';
 import Card from '@/app/components/ui/Card';
 import PageSection from '@/app/components/ui/PageSection';
 import Modal from '@/app/components/ui/Modal';
+import UserRating from '@/app/components/UserRating';
+import AIMatchCard from '@/app/components/AIMatchCard';
 
 export default function RideDemandDetailPage() {
   const params = useParams();
@@ -24,6 +26,9 @@ export default function RideDemandDetailPage() {
   const [selectedRide, setSelectedRide] = React.useState<string>('');
   const [offerMessage, setOfferMessage] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
+  const [aiMatches, setAiMatches] = React.useState<any[]>([]);
+  const [loadingAI, setLoadingAI] = React.useState(false);
+  const [showAIMatches, setShowAIMatches] = React.useState(false);
 
   React.useEffect(() => {
     let mounted = true;
@@ -204,7 +209,9 @@ export default function RideDemandDetailPage() {
   if (!demand) return <div>Ride demand not found.</div>;
 
   const isOwner = currentUserId && demand.passengerId &&
-    (typeof demand.passengerId === 'string' ? demand.passengerId === currentUserId : demand.passengerId._id === currentUserId);
+    (typeof demand.passengerId === 'string' 
+      ? demand.passengerId === currentUserId 
+      : (demand.passengerId._id?.toString?.() === currentUserId || demand.passengerId.toString?.() === currentUserId));
 
   const routeCoords = [];
   if (demand.origin?.location?.coordinates) {
@@ -234,8 +241,9 @@ export default function RideDemandDetailPage() {
         </div>
 
       {demand.passengerId && typeof demand.passengerId === 'object' && (
-        <div style={{ marginBottom: 12, fontSize: '0.9rem', color: '#666' }}>
-          Requested by: {demand.passengerId.name || demand.passengerId.email}
+        <div style={{ marginBottom: 12, fontSize: '0.9rem', color: '#666', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>Requested by: {demand.passengerId.name || demand.passengerId.email}</span>
+          <UserRating userId={demand.passengerId} size={14} showText={true} />
         </div>
       )}
 
@@ -281,6 +289,74 @@ export default function RideDemandDetailPage() {
       </div>
 
       </PageSection>
+
+      {/* AI Matching Section - Show for owners of open demands */}
+      {demand && demand.status === 'open' && isOwner && (
+        <PageSection id="ai-matches" style={{ marginTop: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '1.3rem' }}>
+                🤖 AI-Powered Ride Matching
+              </h2>
+              <p style={{ margin: 0, color: '#666', fontSize: '0.9rem' }}>
+                Find the best rides that match your route and preferences
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              onClick={async () => {
+                if (showAIMatches) {
+                  setShowAIMatches(false);
+                  return;
+                }
+                setLoadingAI(true);
+                try {
+                  const res = await fetch(`/api/ai/match-rides?demandId=${id}`, {
+                    credentials: 'include'
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setAiMatches(data.matches || []);
+                    setShowAIMatches(true);
+                  } else {
+                    alert('Failed to find AI matches');
+                  }
+                } catch (err) {
+                  console.error('AI matching error', err);
+                  alert('Failed to find AI matches');
+                } finally {
+                  setLoadingAI(false);
+                }
+              }}
+              disabled={loadingAI}
+            >
+              {loadingAI ? 'Finding Matches...' : showAIMatches ? 'Hide Matches' : 'Find AI Matches'}
+            </Button>
+          </div>
+
+          {showAIMatches && (
+            <div>
+              {aiMatches.length === 0 ? (
+                <Card style={{ padding: 24, textAlign: 'center' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: 8 }}>🤖</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 4 }}>
+                    No matches found
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                    Try adjusting your route or time preferences
+                  </div>
+                </Card>
+              ) : (
+                <div style={{ display: 'grid', gap: 16 }}>
+                  {aiMatches.map((match, index) => (
+                    <AIMatchCard key={match.ride._id} match={match} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </PageSection>
+      )}
 
       {/* Offers Section */}
       {demand.offers && demand.offers.length > 0 && (

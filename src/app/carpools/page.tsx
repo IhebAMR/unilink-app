@@ -6,12 +6,14 @@ import Button from '@/app/components/ui/Button';
 import Card from '@/app/components/ui/Card';
 import Badge from '@/app/components/ui/Badge';
 import PageSection from '@/app/components/ui/PageSection';
+import UserRating from '@/app/components/UserRating';
+import AIRecommendations from '@/app/components/AIRecommendations';
 import { saveMyRides, getMyRides, saveUserId, getUserId } from '@/app/lib/offlineStorage';
 import { useOnlineStatus } from '@/app/lib/useOnlineStatus';
 
 type Ride = {
   _id: string;
-  ownerId: string;
+  ownerId: string | { _id: string; name?: string; email?: string };
   title?: string;
   dateTime: string;
   seatsAvailable: number;
@@ -29,8 +31,10 @@ export default function CarpoolsListPage() {
   const [otherRides, setOtherRides] = React.useState<Ride[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [filterStatus, setFilterStatus] = React.useState<'all' | 'available' | 'full'>('all');
-  const [activeTab, setActiveTab] = React.useState<'browse' | 'my-rides'>('browse');
+  const [activeTab, setActiveTab] = React.useState<'browse' | 'my-rides' | 'ai-recommendations'>('browse');
   const [isOffline, setIsOffline] = React.useState(false);
+  const [aiRecommendations, setAiRecommendations] = React.useState<any[]>([]);
+  const [loadingAI, setLoadingAI] = React.useState(false);
 
   React.useEffect(() => {
     let mounted = true;
@@ -74,7 +78,17 @@ export default function CarpoolsListPage() {
           const others: Ride[] = [];
           
           for (const ride of rides) {
-            if (currentUserId && ride.ownerId === currentUserId) {
+            if (!currentUserId) {
+              others.push(ride);
+              continue;
+            }
+            
+            // Handle both string and object ownerId
+            const ownerIdStr = typeof ride.ownerId === 'string' 
+              ? ride.ownerId 
+              : ride.ownerId?._id?.toString?.() || ride.ownerId?.toString?.();
+            
+            if (ownerIdStr === currentUserId) {
               my.push(ride);
             } else {
               others.push(ride);
@@ -111,6 +125,29 @@ export default function CarpoolsListPage() {
     })();
     return () => { mounted = false; };
   }, [networkOnline]);
+
+  // Load AI recommendations
+  React.useEffect(() => {
+    if (!networkOnline || activeTab !== 'ai-recommendations') return;
+    
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingAI(true);
+        const res = await fetch('/api/ai/recommend-rides', { credentials: 'include' });
+        if (res.ok && mounted) {
+          const data = await res.json();
+          setAiRecommendations(data.recommendations || []);
+        }
+      } catch (err) {
+        console.error('Failed to load AI recommendations', err);
+      } finally {
+        if (mounted) setLoadingAI(false);
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, [networkOnline, activeTab]);
 
   const handleDelete = async (rideId: string) => {
     if (!confirm('Are you sure you want to delete this ride?')) return;
@@ -158,6 +195,17 @@ export default function CarpoolsListPage() {
           <h3 style={{ margin: '0 0 12px 0', fontSize: '1.3rem', color: '#333' }}>
             {r.title || 'Carpool Ride'}
           </h3>
+
+          {/* Driver Rating */}
+          {r.ownerId && (
+            <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '0.85rem', color: '#666' }}>Driver:</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>
+                {typeof r.ownerId === 'object' ? (r.ownerId.name || r.ownerId.email) : 'Unknown'}
+              </span>
+              <UserRating userId={r.ownerId} size={14} showText={true} />
+            </div>
+          )}
 
           <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
             {/* Origin & Destination */}
@@ -257,6 +305,12 @@ export default function CarpoolsListPage() {
           >
             🚙 My Rides ({myRides.length})
           </Button>
+          <Button
+            variant={activeTab === 'ai-recommendations' ? 'primary' : 'ghost'}
+            onClick={() => setActiveTab('ai-recommendations')}
+          >
+            🤖 AI Recommendations
+          </Button>
         </div>
       </PageSection>
 
@@ -332,6 +386,32 @@ export default function CarpoolsListPage() {
                 <div style={{ display: 'grid', gap: 16 }}>
                   {filteredMyRides.map(r => renderRideCard(r, true))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* AI Recommendations Tab */}
+          {activeTab === 'ai-recommendations' && (
+            <div>
+              {loadingAI ? (
+                <PageSection style={{ textAlign: 'center', padding: 48 }}>
+                  <div style={{ fontSize: '2rem', marginBottom: 16 }}>🤖</div>
+                  <div style={{ fontSize: '1.1rem', color: '#666' }}>
+                    Analyzing your preferences...
+                  </div>
+                </PageSection>
+              ) : (
+                <PageSection>
+                  <div style={{ marginBottom: 16 }}>
+                    <h2 style={{ margin: '0 0 8px 0', fontSize: '1.5rem' }}>
+                      🤖 AI-Powered Recommendations
+                    </h2>
+                    <p style={{ margin: 0, color: '#666', fontSize: '0.9rem' }}>
+                      Personalized ride suggestions based on your travel history and preferences
+                    </p>
+                  </div>
+                  <AIRecommendations recommendations={aiRecommendations} />
+                </PageSection>
               )}
             </div>
           )}

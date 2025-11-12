@@ -1,7 +1,18 @@
 import React from 'react';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import './globals.css';
 
-export default function Page() {
+export default async function Page() {
+  // Check for authentication token server-side
+  const cookieStore = await cookies();
+  const token = cookieStore.get('unilink_token')?.value;
+  
+  // Redirect to login if not authenticated
+  if (!token) {
+    redirect('/login');
+  }
+
   return (
     <div className="page-root">
       <main className="main">
