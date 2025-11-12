@@ -19,7 +19,7 @@ export function useOnlineStatus() {
         const timeoutId = setTimeout(() => controller.abort(), 3000);
 
         const response = await fetch('/api/auth/session', {
-          method: 'HEAD',
+          method: 'GET',
           cache: 'no-store',
           signal: controller.signal,
         });
