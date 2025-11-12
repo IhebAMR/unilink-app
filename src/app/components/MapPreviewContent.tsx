@@ -21,7 +21,31 @@ export default function MapPreviewContent({ coords = [], zoom = 12 }: MapPreview
     if (!isClient || !mapRef.current || leafletMapRef.current) return;
 
     const init = async () => {
-      const L = (await import('leaflet')).default;
+      let L: any;
+      try {
+        L = (await import('leaflet')).default;
+      } catch (impErr) {
+        console.error('Failed to load leaflet bundle:', impErr);
+        // Attempt to recover from stale service worker / cached _next chunks by
+        // unregistering any service workers and clearing caches, then reloading.
+        try {
+          if (navigator?.serviceWorker?.getRegistrations) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (const r of regs) {
+              try { await r.unregister(); } catch (e) { /* ignore */ }
+            }
+          }
+          if (globalThis.caches && globalThis.caches.keys) {
+            const keys = await globalThis.caches.keys();
+            for (const k of keys) { try { await globalThis.caches.delete(k); } catch (e) { /* ignore */ } }
+          }
+        } catch (cleanupErr) {
+          console.error('Error during SW/cache cleanup:', cleanupErr);
+        }
+        // Reload to let the app fetch fresh chunks
+  try { globalThis.location.reload(); } catch { /* ignore */ }
+        return;
+      }
 
       // Fix default icon paths
       delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -31,7 +55,7 @@ export default function MapPreviewContent({ coords = [], zoom = 12 }: MapPreview
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
       });
 
-      const first = coords[0];
+  const first = coords[0];
       const center: [number, number] = first ? [first[1], first[0]] : [36.8065, 10.1815]; // Tunis fallback
 
       const mapEl = mapRef.current!;

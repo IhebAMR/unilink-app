@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { dbConnect } from '@/app/lib/mongoose';
 import CarpoolRide from '@/app/models/CarpoolRide';
 import RideRequest from '@/app/models/RideRequest';
+import User from '@/app/models/User';
+// Ensure the User model is registered with mongoose (import has side-effects)
+void User;
 import { getUserFromRequest } from '@/app/lib/auth';
 import mongoose from 'mongoose';
 
@@ -65,5 +68,41 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   } catch (err) {
     console.error('DELETE /api/carpools/:id error:', err);
     return NextResponse.json({ error: 'Failed to delete ride', details: (err as any)?.message || String(err) }, { status: 500 });
+  }
+}
+
+// PATCH /api/carpools/:id  body: { action: 'complete' }
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  await dbConnect();
+  const user = getUserFromRequest(request);
+  if (!user || !user.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  try {
+    const { id } = params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: 'Invalid ride id' }, { status: 400 });
+    }
+    const body = await request.json().catch(() => ({}));
+    const action = body?.action;
+    if (action !== 'complete') {
+      return NextResponse.json({ error: 'Unsupported action' }, { status: 400 });
+    }
+    const ride = await CarpoolRide.findById(id).exec();
+    if (!ride) return NextResponse.json({ error: 'Ride not found' }, { status: 404 });
+    if (ride.ownerId.toString() !== user.id) {
+      return NextResponse.json({ error: 'Forbidden: Only owner can complete the ride' }, { status: 403 });
+    }
+    // Optional guard: only after scheduled time
+    const now = new Date();
+    if (ride.dateTime && new Date(ride.dateTime) > now) {
+      return NextResponse.json({ error: 'Trip has not started yet' }, { status: 400 });
+    }
+    ride.status = 'completed';
+    await ride.save();
+    return NextResponse.json({ message: 'Ride marked as completed', ride: { status: ride.status, id: ride._id } }, { status: 200 });
+  } catch (err) {
+    console.error('PATCH /api/carpools/:id error:', err);
+    return NextResponse.json({ error: 'Failed to update ride', details: (err as any)?.message || String(err) }, { status: 500 });
   }
 }

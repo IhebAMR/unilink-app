@@ -7,6 +7,7 @@ import Button from '@/app/components/ui/Button';
 import Badge from '@/app/components/ui/Badge';
 import Card from '@/app/components/ui/Card';
 import PageSection from '@/app/components/ui/PageSection';
+import StarRating from '@/app/components/ui/StarRating';
 
 export default function RideDetailPage() {
   const params = useParams(); // recommended in client components
@@ -15,6 +16,12 @@ export default function RideDetailPage() {
 
   const [ride, setRide] = React.useState<any | null>(null);
   const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
+  const [ownerReviews, setOwnerReviews] = React.useState<any[]>([]);
+  const [ownerAverage, setOwnerAverage] = React.useState<number | null>(null);
+  const [reviewRating, setReviewRating] = React.useState<number>(0);
+  const [reviewComment, setReviewComment] = React.useState<string>('');
+  const [submittingReview, setSubmittingReview] = React.useState<boolean>(false);
+  const [reviewSuccess, setReviewSuccess] = React.useState<string | null>(null);
   const [requests, setRequests] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -63,6 +70,25 @@ export default function RideDetailPage() {
   if (mounted) setRide(rideDoc);
   if (mounted && rideJson?.currentUserId) setCurrentUserId(rideJson.currentUserId);
   if (mounted && rideJson?.myRequest) setMyRequest(rideJson.myRequest);
+        // Fetch owner reviews
+        if (mounted) {
+          try {
+            const ownerId = rideDoc?.ownerId?._id || rideDoc?.ownerId;
+            if (ownerId && id) {
+              fetch(`/api/profile/reviews?userId=${ownerId}&relatedRide=${id}`, { credentials: 'include' })
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                  if (!mounted) return;
+                  if (data) {
+                    setOwnerReviews(data.reviews || []);
+                    setOwnerAverage(data.averageRating ?? null);
+                  }
+                }).catch(err => console.error('Failed to load owner reviews', err));
+            }
+          } catch (err) {
+            console.error('Error fetching owner reviews', err);
+          }
+        }
         
         // Get current user ID
         if (userRes.ok) {
@@ -214,12 +240,13 @@ export default function RideDetailPage() {
   );
   if (!ride) return <div>Ride not found.</div>;
 
-  const isOwner = currentUserId && ride.ownerId && 
-    (typeof ride.ownerId === 'string' ? ride.ownerId === currentUserId : ride.ownerId._id === currentUserId);
+  const ownerIdStr = (typeof ride.ownerId === 'string') ? ride.ownerId : ride.ownerId?._id?.toString?.();
+  const isOwner = !!(currentUserId && ownerIdStr && ownerIdStr === currentUserId);
 
   const rideStatus = ride.status || 'open';
   const isAvailable = rideStatus === 'open' && ride.seatsAvailable > 0;
   const hasMyActiveRequest = !!(myRequest && (myRequest.status === 'pending' || myRequest.status === 'accepted'));
+  const canComplete = isOwner && rideStatus !== 'completed' && rideStatus !== 'cancelled' && new Date(ride.dateTime) <= new Date();
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
@@ -240,11 +267,121 @@ export default function RideDetailPage() {
               {deleting ? 'Deleting…' : 'Delete Ride'}
             </Button>
           )}
+          {canComplete && (
+            <Button
+              onClick={async () => {
+                try {
+                  const res = await fetch(`/api/carpools/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ action: 'complete' }) });
+                  if (!res.ok) {
+                    const j = await res.json().catch(()=>({}));
+                    alert(j.error || 'Failed to mark as completed');
+                    return;
+                  }
+                  const j = await res.json();
+                  setRide((prev:any) => ({ ...prev, status: 'completed' }));
+                } catch (e) {
+                  console.error('Complete ride error', e);
+                  alert('Failed to complete ride');
+                }
+              }}
+              variant="success"
+              disabled={rideStatus === 'completed'}
+              style={{ marginLeft: 8 }}
+            >
+              {rideStatus === 'completed' ? 'Completed' : 'Mark Completed'}
+            </Button>
+          )}
         </div>
 
         {ride.ownerId && typeof ride.ownerId === 'object' && (
           <div style={{ marginBottom: 12, fontSize: '0.9rem', color: '#666' }}>
             Offered by: {ride.ownerId.name || ride.ownerId.email}
+          </div>
+        )}
+
+        {/* Owner reviews */}
+        {ride.ownerId && typeof ride.ownerId === 'object' && (
+          <div style={{ marginTop: 8, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem', color: '#444' }}>
+              <span style={{ fontWeight: 600 }}>Driver rating:</span>
+              <StarRating value={Math.round((ownerAverage || 0))} onChange={() => {}} readOnly size={20} />
+              {ownerAverage !== null ? <span>({ownerAverage.toFixed(1)})</span> : <span>No ratings yet</span>}
+              {ownerReviews?.length ? <span style={{ color: '#888' }}>• {ownerReviews.length} review{ownerReviews.length>1?'s':''}</span> : null}
+            </div>
+            {ownerReviews.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                {ownerReviews.map(r => (
+                  <div key={r._id} style={{ borderTop: '1px solid #eee', paddingTop: 8, marginTop: 8 }}>
+                    <div style={{ fontWeight: '600' }}>{r.author?.name || r.author?.email || 'Anonymous'}</div>
+                    <div style={{ fontSize: '0.85rem', color: '#555' }}>Rating: {r.rating} / 5</div>
+                    {r.comment && <div style={{ marginTop: 6, color: '#333' }}>{r.comment}</div>}
+                    <div style={{ fontSize: '0.75rem', color: '#888', marginTop: 6 }}>{new Date(r.createdAt).toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Submit review (non-owner) */}
+            {currentUserId && ride.ownerId && ride.status === 'completed' && !(typeof ride.ownerId === 'string' ? ride.ownerId === currentUserId : ride.ownerId._id === currentUserId) && (
+              <div style={{ marginTop: 12, padding: 10, border: '1px dashed #e5e7eb', borderRadius: 6 }}>
+                <div style={{ marginBottom: 8, fontWeight: 600 }}>Leave a review for this driver</div>
+                <div style={{ marginBottom: 8 }}>
+                  <StarRating value={reviewRating} onChange={setReviewRating} ariaLabel="Your rating" />
+                </div>
+                <div>
+                  <textarea
+                    maxLength={300}
+                    placeholder="Write your review here (optional)"
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    style={{ width: '100%', minHeight: 80, padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }}
+                  />
+                  <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#888' }}>{reviewComment.length}/300</div>
+                </div>
+                {reviewSuccess && (
+                  <div style={{ marginTop: 8, color: '#16a34a', fontWeight: 600 }}>{reviewSuccess}</div>
+                )}
+                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                      <Button variant="success" onClick={async () => {
+                        if (!ride?.ownerId) return;
+                        if (!reviewRating) { alert('Please choose a star rating.'); return; }
+                        setSubmittingReview(true);
+                        try {
+                          const ownerId = ride.ownerId._id || ride.ownerId;
+                          // Ensure we send a valid ride id: prefer route param `id`, fall back to ride._id
+                          const rideIdToSend = id || (ride && (ride._id || ride.id));
+                          if (!rideIdToSend) {
+                            alert('Cannot submit review: missing ride id');
+                            return;
+                          }
+                          const res = await fetch('/api/profile/reviews', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ userId: ownerId, rating: reviewRating, comment: reviewComment, relatedRide: rideIdToSend })
+                          });
+                      if (!res.ok) {
+                        const j = await res.json().catch(() => ({}));
+                        alert(j.error || 'Failed to submit review');
+                        return;
+                      }
+                      const data = await res.json();
+                      setOwnerReviews(data.reviews || []);
+                      setOwnerAverage(data.averageRating ?? null);
+                      setReviewComment('');
+                      setReviewRating(0);
+                      setReviewSuccess('Thanks! Your review has been submitted.');
+                    } catch (err) {
+                      console.error('Failed to submit review', err);
+                      alert('Failed to submit review');
+                    } finally {
+                      setSubmittingReview(false);
+                    }
+                  }} disabled={submittingReview || !reviewRating}>{submittingReview ? 'Sending…' : 'Submit Review'}</Button>
+                  <Button variant="neutral" onClick={() => { setReviewRating(5); setReviewComment(''); }}>Cancel</Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

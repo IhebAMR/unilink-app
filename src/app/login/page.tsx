@@ -55,6 +55,8 @@ function LoginContent() {
         headers: {
           'Content-Type': 'application/json',
         },
+        // include credentials so the server-set HttpOnly cookie is stored by the browser
+        credentials: 'include',
         body: JSON.stringify(formData),
       });
 

@@ -6,15 +6,49 @@ export default function RegisterSW() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    // In production we register. For easier local testing, allow localhost too.
-    const shouldRegister =
-      process.env.NODE_ENV === 'production' ||
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1';
+    // In development, ensure any previously-registered service workers are unregistered
+    // This prevents a stale SW (from previous runs) from intercepting /_next/ requests
+    // and serving or redirecting to invalid chunk URLs such as '/_next/undefined'.
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (!isProduction) {
+      // Best-effort cleanup for dev: unregister any service workers and clear runtime caches
+      navigator.serviceWorker.getRegistrations()
+        .then(regs => { for (const r of regs) { try { r.unregister(); } catch {} } })
+        .catch(() => {});
+      if (globalThis.caches && globalThis.caches.keys) {
+        globalThis.caches.keys().then(keys => { for (const k of keys) { try { globalThis.caches.delete(k); } catch {} } }).catch(() => {});
+      }
 
-    if (!shouldRegister) return;
+      // Install a global error handler to detect chunk load errors and attempt to recover
+      const onError = (ev: ErrorEvent) => {
+        try {
+          const msg = ev?.message || '';
+          if (
+            typeof msg === 'string' && (
+              msg.includes('Loading chunk') ||
+              msg.includes('ChunkLoadError') ||
+              msg.includes('/_next/undefined') ||
+              msg.includes("Cannot read properties of undefined (reading 'call')")
+            )
+          ) {
+            // unregister and clear caches then reload to recover from stale SW or stale assets
+            navigator.serviceWorker.getRegistrations().then(regs => { for (const r of regs) { try { r.unregister(); } catch {} } }).catch(() => {});
+            if (globalThis.caches && globalThis.caches.keys) {
+              globalThis.caches.keys().then(keys => { for (const k of keys) { try { globalThis.caches.delete(k); } catch {} } }).catch(() => {});
+            }
+            // small delay to allow unregister to propagate
+            setTimeout(() => { try { (globalThis.location as any).reload(true); } catch { globalThis.location.reload(); } }, 300);
+          }
+        } catch (e) {
+          // swallow
+        }
+      };
+      window.addEventListener('error', onError);
 
-    const swUrl = '/sw.js';
+      return () => { window.removeEventListener('error', onError); };
+    }
+
+  const swUrl = '/sw.js';
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register(swUrl)

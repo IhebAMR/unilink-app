@@ -31,43 +31,27 @@ export default function ProfilePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Load user data from localStorage
+    // Load the authenticated user from server (/api/me) rather than relying solely on localStorage.
     const loadUserData = async () => {
-      const userStr = localStorage.getItem('user');
-      if (!userStr) {
-        router.push('/login');
-        return;
-      }
-
       try {
-        const userData = JSON.parse(userStr);
-        // Fetch fresh user data from the server
-        const response = await fetch('/api/profile/update', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: userData.email
-          }),
-        });
-
-        if (response.ok) {
-          const freshUserData = await response.json();
-          setUser(freshUserData);
-          // Update localStorage with fresh data
-          localStorage.setItem('user', JSON.stringify(freshUserData));
-          // Notify other components
-          window.dispatchEvent(new StorageEvent('storage', {
-            key: 'user',
-            newValue: JSON.stringify(freshUserData),
-            storageArea: localStorage
-          }));
-        } else {
-          throw new Error('Failed to fetch user data');
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (!res.ok) {
+          // If the endpoint fails treat as unauthenticated
+          router.push('/login');
+          return;
         }
-      } catch (e) {
-        console.error('Error loading user data:', e);
+        const json = await res.json();
+        const serverUser = json?.user || null;
+        if (!serverUser) {
+          // fallback to localStorage if server has no user (but redirect to login)
+          router.push('/login');
+          return;
+        }
+        setUser(serverUser);
+        // Keep localStorage in sync for components that rely on it
+        try { localStorage.setItem('user', JSON.stringify(serverUser)); } catch {}
+      } catch (err) {
+        console.error('Error loading user data from /api/me:', err);
         router.push('/login');
       }
     };
@@ -122,16 +106,10 @@ export default function ProfilePage() {
         
         setUser(newUserData);
         
-        // Update localStorage and trigger storage event
+        // Update localStorage and trigger a custom userUpdated event
         const updatedData = JSON.stringify(newUserData);
         localStorage.setItem('user', updatedData);
-        
-        // Dispatch storage event to notify other components
-        window.dispatchEvent(new StorageEvent('storage', {
-          key: 'user',
-          newValue: updatedData,
-          storageArea: localStorage
-        }));
+          try { globalThis.dispatchEvent(new Event('userUpdated')); } catch (e) { /* ignore */ }
 
         // Reset editing state
         setEditingField(null);

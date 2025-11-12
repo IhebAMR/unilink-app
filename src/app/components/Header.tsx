@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react';
+import { usePathname, useRouter } from 'next/navigation';
 import InstallButton from './InstallButton';
 
 interface User {
@@ -18,7 +17,7 @@ interface User {
 
 export default function Header() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -26,14 +25,16 @@ export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showCarpoolDropdown, setShowCarpoolDropdown] = useState(false);
-  const [dropUpCarpool, setDropUpCarpool] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [menuCoords, setMenuCoords] = useState<{ top: number; bottom: number; left: number } | null>(null);
-
+  // refs must be defined unconditionally (no early returns before hooks)
   const carpoolRef = useRef<HTMLDivElement>(null);
   const carpoolButtonRef = useRef<HTMLButtonElement>(null);
   const notifyRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  // Hide header on public/auth pages (handled later with a single null-return)
+  const publicRoutes = ['/login','/register','/forgot-password','/otp-verification'];
+  const isPublicRoute = publicRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
 
   // Close on outside click
   useEffect(() => {
@@ -43,16 +44,16 @@ export default function Header() {
       if (notifyRef.current && !notifyRef.current.contains(t)) setShowNotifications(false);
       if (profileRef.current && !profileRef.current.contains(t)) setIsProfileOpen(false);
     };
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
+    globalThis.document?.addEventListener('mousedown', onDocClick as any);
+    return () => globalThis.document?.removeEventListener('mousedown', onDocClick as any);
   }, []);
 
   // Track viewport to decide dropdown direction (drop-up on mobile or low space)
   useEffect(() => {
     const updateDevice = () => setIsMobile(window.innerWidth < 768);
     updateDevice();
-    window.addEventListener('resize', updateDevice);
-    return () => window.removeEventListener('resize', updateDevice);
+    globalThis.addEventListener('resize', updateDevice as any);
+    return () => globalThis.removeEventListener('resize', updateDevice as any);
   }, []);
 
   // When menu opens or viewport changes, compute whether to drop up
@@ -62,66 +63,76 @@ export default function Header() {
       const btn = carpoolButtonRef.current;
       if (!btn) return;
       const rect = btn.getBoundingClientRect();
-      // Force dropdown to open downward
-      setDropUpCarpool(false);
+      // Force dropdown to open downward (no state needed)
       setMenuCoords({ top: rect.top, bottom: rect.bottom, left: rect.left });
     };
 
     computeDropDirection();
-    window.addEventListener('resize', computeDropDirection);
-    window.addEventListener('scroll', computeDropDirection, true);
+    globalThis.addEventListener('resize', computeDropDirection as any);
+    globalThis.addEventListener('scroll', computeDropDirection as any, true);
     return () => {
-      window.removeEventListener('resize', computeDropDirection);
-      window.removeEventListener('scroll', computeDropDirection, true);
+      globalThis.removeEventListener('resize', computeDropDirection as any);
+      globalThis.removeEventListener('scroll', computeDropDirection as any, true);
     };
   }, [showCarpoolDropdown, isMobile]);
 
   useEffect(() => {
     let mounted = true;
     const checkAuth = async () => {
-      if (status === 'authenticated' && session?.user) {
-        if (mounted) {
-          setUser({
-            id: session.user.id,
-            name: session.user.name || '',
-            email: session.user.email || '',
-            image: session.user.image,
-            avatarUrl: session.user.image,
-          } as User);
-          setLoading(false);
-          return;
-        }
-      }
-      if (status === 'loading') { setLoading(true); return; }
-      if (status === 'unauthenticated') {
+      setLoading(true);
+      try {
+        // Always use authoritative /api/me
+        let serverUser: User | null = null;
         try {
-          const res = await fetch('/api/me', { credentials: 'include' });
+          const res = await fetch(`/api/me?ts=${Date.now()}`, { credentials: 'include', cache: 'no-store' });
           if (res.ok) {
             const json = await res.json();
-            if (mounted && json?.user) { setUser(json.user); setLoading(false); return; }
+            if (json?.user) serverUser = json.user as User;
           }
-        } catch {}
-        try {
-          const userStr = localStorage.getItem('user');
-          if (userStr) {
-            const userData = JSON.parse(userStr);
-            if (mounted) { setUser(userData); setLoading(false); return; }
-          }
-        } catch (e) { console.error('Error reading user from localStorage:', e); }
-        finally { if (mounted) setLoading(false); }
+        } catch (err) {
+          console.warn('Failed to fetch /api/me:', err);
+        }
+
+        // If server returned a user, prefer it and sync localStorage
+        if (mounted && serverUser) {
+          setUser(serverUser);
+          try { localStorage.setItem('user', JSON.stringify(serverUser)); } catch {}
+          return;
+        }
+
+        // No user anywhere -> clear stale data
+        try { localStorage.removeItem('user'); } catch {}
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
+
     checkAuth();
+    // Periodic refresh in case redirects happen without events
+    const interval = setInterval(checkAuth, 10000);
     const onStorage = (e: StorageEvent) => { if (e.key === 'user') checkAuth(); };
     const onUserLogin = () => checkAuth();
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('userLogin', onUserLogin as EventListener);
+    // Listen for our custom update event so components can notify header when the user changed
+    const onUserUpdated = () => checkAuth();
+    globalThis.addEventListener('storage', onStorage as any);
+    globalThis.addEventListener('userLogin', onUserLogin as EventListener);
+    globalThis.addEventListener('userUpdated', onUserUpdated as EventListener);
     return () => {
       mounted = false;
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('userLogin', onUserLogin as EventListener);
+      clearInterval(interval);
+      globalThis.removeEventListener('storage', onStorage as any);
+      globalThis.removeEventListener('userLogin', onUserLogin as EventListener);
+      globalThis.removeEventListener('userUpdated', onUserUpdated as EventListener);
     };
-  }, [session, status]);
+  }, []);
+
+  // Re-check when route changes (helps right after /login navigates)
+  useEffect(() => {
+    // Trigger a user refresh when the pathname changes
+    const event = new Event('userUpdated');
+    globalThis.dispatchEvent(event);
+  }, [pathname]);
 
   // Notifications
   useEffect(() => {
@@ -165,8 +176,7 @@ export default function Header() {
 
   const handleLogout = async () => {
     try {
-      if (session) { await signOut({ redirect: false }); }
-      else { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); }
+      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
     } catch (err) { console.error('Logout request failed', err); }
     finally {
       localStorage.removeItem('user');
@@ -174,6 +184,8 @@ export default function Header() {
       router.push('/login');
     }
   };
+
+  if (isPublicRoute || loading || !user) return null;
 
   return (
     <header className="header app-container" role="banner" aria-label="En-tête de l'application">
@@ -212,7 +224,6 @@ export default function Header() {
                   if (!btn) return;
                   const rect = btn.getBoundingClientRect();
                   // Always open downward
-                  setDropUpCarpool(false);
                   setMenuCoords({ top: rect.top, bottom: rect.bottom, left: rect.left });
                 });
               }}
@@ -270,9 +281,6 @@ export default function Header() {
       </nav>
 
       <div className="nav-actions">
-        {loading ? (
-          <div className="nav-loading" aria-hidden>...</div>
-        ) : user ? (
           <>
             {/* Notifications */}
             <div ref={notifyRef} style={{ position: 'relative', marginRight: 16 }}>
@@ -399,11 +407,6 @@ export default function Header() {
               )}
             </div>
           </>
-        ) : (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Link href="/login"><button className="login-button">Se connecter</button></Link>
-          </div>
-        )}
         <InstallButton />
       </div>
     </header>

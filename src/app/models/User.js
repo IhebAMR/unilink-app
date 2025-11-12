@@ -45,6 +45,14 @@ const UserSchema = new Schema({
     ip: { type: String },
     userAgent: { type: String }
   }],
+  // Reviews left by other users about this user (as a rider/driver)
+  reviews: [{
+    authorId: { type: Schema.Types.ObjectId, ref: 'User' },
+    rating: { type: Number, min: 1, max: 5 },
+    comment: { type: String },
+    relatedRide: { type: Schema.Types.ObjectId, ref: 'CarpoolRide' },
+    createdAt: { type: Date, default: Date.now }
+  }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 }, { versionKey: false });
