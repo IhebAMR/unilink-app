@@ -15,11 +15,13 @@ export function middleware(req: NextRequest) {
     '/offline.html',
     '/sw.js',
     '/favicon.ico',
+    '/test-face-recognition',
   ];
 
   const isPublic = (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/icons') ||
+    pathname.startsWith('/models') ||
     pathname.startsWith('/api') ||
     publicPrefixes.some(p => pathname === p || pathname.startsWith(p + '/'))
   );

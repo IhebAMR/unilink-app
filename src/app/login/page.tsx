@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
+import FaceLogin from '@/app/components/FaceLogin';
 import styles from './login.module.css';
 
 // Avoid static prerender to prevent Suspense requirement for useSearchParams during build
@@ -15,6 +16,7 @@ function LoginContent() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showFaceLogin, setShowFaceLogin] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -86,6 +88,35 @@ function LoginContent() {
     }
   };
 
+  const handleFaceVerified = async (email: string) => {
+    try {
+      // Face verification already logs the user in via the API
+      // Just fetch user data and redirect
+      const response = await fetch('/api/me', {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // The API returns { user: {...} }
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+          window.dispatchEvent(new Event('userLogin'));
+          setSuccess('Connexion réussie par reconnaissance faciale!');
+          router.push('/');
+          router.refresh();
+        } else {
+          setError('Erreur lors de la récupération des données utilisateur');
+        }
+      } else {
+        setError('Erreur lors de la connexion');
+      }
+    } catch (err: any) {
+      console.error('Error in handleFaceVerified:', err);
+      setError('Erreur lors de la connexion');
+    }
+  };
+
   return (
     <div className={styles.loginContainer}>
       <div className={styles.loginBox}>
@@ -133,15 +164,56 @@ function LoginContent() {
 
         <div className={styles.divider}>ou</div>
 
-        <button
-          type="button"
-          className={styles.googleButton}
-          onClick={() => signIn('google', { callbackUrl: '/' })}
-          disabled={loading}
-        >
-          <img src="/google-icon.svg" alt="Google" className={styles.googleIcon} />
-          Se connecter avec Google
-        </button>
+        {!showFaceLogin ? (
+          <>
+            <button
+              type="button"
+              className={styles.faceLoginButton}
+              onClick={() => setShowFaceLogin(true)}
+              disabled={loading}
+            >
+              🔒 Se connecter avec la reconnaissance faciale
+            </button>
+
+            <button
+              type="button"
+              className={styles.googleButton}
+              onClick={() => signIn('google', { callbackUrl: '/' })}
+              disabled={loading}
+            >
+              <img src="/google-icon.svg" alt="Google" className={styles.googleIcon} />
+              Se connecter avec Google
+            </button>
+          </>
+        ) : (
+          <div className={styles.faceLoginContainer}>
+            <button
+              type="button"
+              className={styles.backButton}
+              onClick={() => {
+                setShowFaceLogin(false);
+                setError('');
+                setSuccess('');
+              }}
+            >
+              ← Retour
+            </button>
+            <div className={styles.faceLoginInfo}>
+              <p className={styles.infoText}>
+                💡 <strong>Note:</strong> Vous devez avoir enregistré votre visage dans votre profil pour utiliser cette fonctionnalité.
+                Si c'est votre première fois, connectez-vous d'abord avec votre email et mot de passe, puis allez dans <strong>Profil → Reconnaissance faciale → Activer</strong>.
+              </p>
+            </div>
+            {showFaceLogin && (
+              <FaceLogin
+                key={showFaceLogin ? 'active' : 'inactive'} // Force remount when toggling
+                onFaceVerified={handleFaceVerified}
+                onError={(err) => setError(err)}
+                isVerifying={true}
+              />
+            )}
+          </div>
+        )}
 
         <p className={styles.registerLink}>
           Pas encore de compte ? <a href="/register">S'inscrire</a>

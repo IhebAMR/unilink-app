@@ -16,6 +16,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/nodemailer": "^7.0.2",
     "bcryptjs": "^3.0.2",
+    "face-api.js": "^0.22.2",
     "leaflet": "^1.9.4",
     "mongoose": "^7.5.0",
     "next": "^14.0.3",
