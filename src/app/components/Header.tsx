@@ -35,6 +35,7 @@ export default function Header() {
   // Hide header on public/auth pages (handled later with a single null-return)
   const publicRoutes = ['/login','/register','/forgot-password','/otp-verification'];
   const isPublicRoute = publicRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
+  // Add ai-chat to always show in nav
 
   // Close on outside click
   useEffect(() => {
@@ -211,6 +212,13 @@ export default function Header() {
             Events
           </Link>
           <div ref={carpoolRef} style={{ position: 'relative' }}>
+          <Link href="/ai-chat" className="nav-link nav-link-primary" style={{ marginLeft: 8 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6, verticalAlign: 'middle' }}>
+              <circle cx="12" cy="12" r="10" stroke="#1e90ff" strokeWidth="2" fill="#e3f2fd" />
+              <text x="12" y="16" textAnchor="middle" fontSize="10" fill="#1976d2" fontFamily="Inter, Arial">AI</text>
+            </svg>
+            AI Chat
+          </Link>
             <button
               type="button"
               className="nav-link nav-link-primary"

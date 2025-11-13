@@ -80,9 +80,11 @@ export default function SubscribePushPage() {
       const applicationServerKey = urlBase64ToUint8Array(keyData.publicKey);
 
       // Subscribe
+      // The browser expects a BufferSource (ArrayBuffer or ArrayBufferView).
+      // Cast the Uint8Array to ArrayBuffer to satisfy TypeScript's stricter lib types.
       const newSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: applicationServerKey
+        applicationServerKey: applicationServerKey.buffer ? applicationServerKey.buffer as ArrayBuffer : applicationServerKey as unknown as ArrayBuffer
       });
 
       // Send subscription to server

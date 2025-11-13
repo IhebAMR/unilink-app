@@ -73,41 +73,10 @@ export async function POST(request: Request) {
     // Ensure both reviewer and target were participants (or owner)
     const reviewerId = currentUser.id;
     const targetId = userId;
-    
-    // Helper to normalize IDs for comparison
-    const normalizeId = (id: any): string => {
-      if (!id) return '';
-      if (typeof id === 'string') return id;
-      if (id.toString) return id.toString();
-      return String(id);
-    };
-    
-    const rideOwnerId = normalizeId(ride.ownerId);
-    const normalizedReviewerId = normalizeId(reviewerId);
-    const normalizedTargetId = normalizeId(targetId);
-    
-    // Check if reviewer was on the ride (owner or participant)
-    const reviewerWasOwner = rideOwnerId === normalizedReviewerId;
-    const reviewerWasParticipant = Array.isArray(ride.participants) && 
-      ride.participants.some((p: any) => normalizeId(p) === normalizedReviewerId);
-    const reviewerWasOnRide = reviewerWasOwner || reviewerWasParticipant;
-    
-    // Check if target was on the ride (owner or participant)
-    const targetWasOwner = rideOwnerId === normalizedTargetId;
-    const targetWasParticipant = Array.isArray(ride.participants) && 
-      ride.participants.some((p: any) => normalizeId(p) === normalizedTargetId);
-    const targetWasOnRide = targetWasOwner || targetWasParticipant;
-    
-    if (!reviewerWasOnRide) {
-      return NextResponse.json({ 
-        error: 'You must have participated in this ride to leave a review. Only passengers and the driver can review each other.' 
-      }, { status: 400 });
-    }
-    
-    if (!targetWasOnRide) {
-      return NextResponse.json({ 
-        error: 'The user you are trying to review must have participated in this ride.' 
-      }, { status: 400 });
+    const reviewerWasOnRide = String(ride.ownerId) === String(reviewerId) || (Array.isArray(ride.participants) && ride.participants.map(String).includes(String(reviewerId)));
+    const targetWasOnRide = String(ride.ownerId) === String(targetId) || (Array.isArray(ride.participants) && ride.participants.map(String).includes(String(targetId)));
+    if (!reviewerWasOnRide || !targetWasOnRide) {
+      return NextResponse.json({ error: 'Both reviewer and reviewed user must have participated in the ride' }, { status: 400 });
     }
 
     const targetUser = await User.findById(userId);

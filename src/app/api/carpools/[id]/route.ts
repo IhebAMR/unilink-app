@@ -90,19 +90,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
     const ride = await CarpoolRide.findById(id).exec();
     if (!ride) return NextResponse.json({ error: 'Ride not found' }, { status: 404 });
-    
-    // Check if user is the owner or a participant
-    const isOwner = ride.ownerId.toString() === user.id;
-    const isParticipant = ride.participants && Array.isArray(ride.participants) && 
-      ride.participants.some((p: any) => p.toString() === user.id);
-    
-    if (!isOwner && !isParticipant) {
-      return NextResponse.json({ error: 'Forbidden: Only owner or participants can complete the ride' }, { status: 403 });
+    if (ride.ownerId.toString() !== user.id) {
+      return NextResponse.json({ error: 'Forbidden: Only owner can complete the ride' }, { status: 403 });
     }
     
     // Only allow completion after the scheduled ride date has passed
+    // In dev mode (USE_DEV_AUTH=true), allow early completion to ease testing
     const now = new Date();
-    if (ride.dateTime && new Date(ride.dateTime) > now) {
+    const allowEarlyComplete = process.env.USE_DEV_AUTH === 'true';
+    if (ride.dateTime && new Date(ride.dateTime) > now && !allowEarlyComplete) {
       return NextResponse.json({ 
         error: 'Trip has not started yet. You can mark it as completed after the scheduled date.' 
       }, { status: 400 });

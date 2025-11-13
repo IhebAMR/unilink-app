@@ -8,7 +8,6 @@ import Badge from '@/app/components/ui/Badge';
 import Card from '@/app/components/ui/Card';
 import PageSection from '@/app/components/ui/PageSection';
 import StarRating from '@/app/components/ui/StarRating';
-import UserRating from '@/app/components/UserRating';
 
 export default function RideDetailPage() {
   const params = useParams(); // recommended in client components
@@ -261,26 +260,18 @@ export default function RideDetailPage() {
 
   const ownerIdStr = (typeof ride.ownerId === 'string') ? ride.ownerId : ride.ownerId?._id?.toString?.();
   const isOwner = !!(currentUserId && ownerIdStr && ownerIdStr === currentUserId);
-  
-  // Check if current user is a participant (either in participants array or has an accepted request)
-  const isInParticipants = !!(currentUserId && ride.participants && Array.isArray(ride.participants) &&
-    ride.participants.some((p: any) => {
-      const pId = typeof p === 'string' ? p : p?._id?.toString?.() || p?.toString?.();
-      return pId === currentUserId;
-    }));
-  const hasAcceptedRequest = !!(myRequest && myRequest.status === 'accepted');
-  const isParticipant = isInParticipants || hasAcceptedRequest;
 
   const rideStatus = ride.status || 'open';
   const isAvailable = rideStatus === 'open' && ride.seatsAvailable > 0;
   const hasMyActiveRequest = !!(myRequest && (myRequest.status === 'pending' || myRequest.status === 'accepted'));
   
   // Only allow completion after the scheduled ride date has passed
-  // Both owners and participants can mark rides as completed
-  const canComplete = (isOwner || isParticipant) && 
+  // Show the complete button to the owner whenever the ride isn't completed/cancelled.
+  // Server will still enforce date/time in production; in dev we allow early completion.
+  const canComplete = isOwner && 
     rideStatus !== 'completed' && 
-    rideStatus !== 'cancelled' && 
-    new Date(ride.dateTime) <= new Date();
+    rideStatus !== 'cancelled';
+  const isTooEarly = ride.dateTime ? new Date(ride.dateTime) > new Date() : false;
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 16 }}>
@@ -332,17 +323,21 @@ export default function RideDetailPage() {
               {rideStatus === 'completed' ? '✓ Completed' : '✓ Mark Completed'}
             </Button>
           )}
+          {canComplete && isTooEarly && (
+            <div style={{ marginTop: 6, fontSize: '0.85rem', color: '#6b7280' }}>
+              You can complete this ride after the scheduled date/time.
+            </div>
+          )}
         </div>
 
         {ride.ownerId && typeof ride.ownerId === 'object' && (
-          <div style={{ marginBottom: 12, fontSize: '0.9rem', color: '#666', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>Offered by: {ride.ownerId.name || ride.ownerId.email}</span>
-            <UserRating userId={ride.ownerId} size={14} showText={true} />
+          <div style={{ marginBottom: 12, fontSize: '0.9rem', color: '#666' }}>
+            Offered by: {ride.ownerId.name || ride.ownerId.email}
           </div>
         )}
 
         {/* Owner reviews */}
-        {ride.ownerId && (
+        {ride.ownerId && typeof ride.ownerId === 'object' && (
           <div style={{ marginTop: 8, marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem', color: '#444' }}>
               <span style={{ fontWeight: 600 }}>Driver rating:</span>
@@ -364,14 +359,14 @@ export default function RideDetailPage() {
             )}
 
             {/* Show message if user has already reviewed */}
-            {currentUserId && ride.ownerId && ride.status === 'completed' && hasReviewed && ownerIdStr !== currentUserId && isParticipant && (
+            {currentUserId && ride.ownerId && ride.status === 'completed' && hasReviewed && !(typeof ride.ownerId === 'string' ? ride.ownerId === currentUserId : ride.ownerId._id === currentUserId) && (
               <div style={{ marginTop: 12, padding: 10, border: '1px solid #e5e7eb', borderRadius: 6, backgroundColor: '#f9fafb' }}>
                 <div style={{ color: '#16a34a', fontWeight: 600 }}>✓ You have already reviewed this driver</div>
               </div>
             )}
 
-            {/* Submit review (participants only) */}
-            {currentUserId && ride.ownerId && ride.status === 'completed' && !hasReviewed && ownerIdStr !== currentUserId && isParticipant && (
+            {/* Submit review (non-owner) */}
+            {currentUserId && ride.ownerId && ride.status === 'completed' && !hasReviewed && !(typeof ride.ownerId === 'string' ? ride.ownerId === currentUserId : ride.ownerId._id === currentUserId) && (
               <div style={{ marginTop: 12, padding: 10, border: '1px dashed #e5e7eb', borderRadius: 6 }}>
                 <div style={{ marginBottom: 8, fontWeight: 600 }}>Leave a review for this driver</div>
                 <div style={{ marginBottom: 8 }}>
@@ -403,17 +398,15 @@ export default function RideDetailPage() {
                             alert('Cannot submit review: missing ride id');
                             return;
                           }
-                      const res = await fetch('/api/profile/reviews', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ userId: ownerId, rating: reviewRating, comment: reviewComment, relatedRide: rideIdToSend })
-                      });
+                          const res = await fetch('/api/profile/reviews', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ userId: ownerId, rating: reviewRating, comment: reviewComment, relatedRide: rideIdToSend })
+                          });
                       if (!res.ok) {
                         const j = await res.json().catch(() => ({}));
-                        const errorMsg = j.error || 'Failed to submit review';
-                        alert(errorMsg);
-                        console.error('Review submission error:', j);
+                        alert(j.error || 'Failed to submit review');
                         return;
                       }
                       const data = await res.json();
@@ -432,6 +425,12 @@ export default function RideDetailPage() {
                   }} disabled={submittingReview || !reviewRating}>{submittingReview ? 'Sending…' : 'Submit Review'}</Button>
                   <Button variant="neutral" onClick={() => { setReviewRating(5); setReviewComment(''); }}>Cancel</Button>
                 </div>
+              </div>
+            )}
+            {/* If requester is accepted but ride not completed yet, show guidance */}
+            {!isOwner && ride.status !== 'completed' && myRequest && myRequest.status === 'accepted' && (
+              <div style={{ marginTop: 12, padding: 10, border: '1px solid #e5e7eb', borderRadius: 6, backgroundColor: '#fff7ed' }}>
+                <div style={{ color: '#b45309' }}>You can leave a review after the driver marks this ride as completed.</div>
               </div>
             )}
           </div>
@@ -560,13 +559,8 @@ export default function RideDetailPage() {
               <Card key={req._id} style={{ backgroundColor: req.status === 'pending' ? '#fff' : req.status === 'accepted' ? '#e8f5e9' : '#ffebee' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <div style={{ fontWeight: 'bold' }}>
-                        {req.passengerId?.name || req.passengerId?.email || 'Unknown User'}
-                      </div>
-                      {req.passengerId && (
-                        <UserRating userId={req.passengerId} size={14} showText={true} />
-                      )}
+                    <div style={{ fontWeight: 'bold' }}>
+                      {req.passengerId?.name || req.passengerId?.email || 'Unknown User'}
                     </div>
                     <div style={{ fontSize: '0.85rem', color: '#666', marginTop: 4 }}>
                       Seats requested: {req.seatsRequested}
