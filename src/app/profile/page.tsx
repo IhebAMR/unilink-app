@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import FaceCapture from '@/app/components/FaceCapture';
 
 interface User {
   name: string;
@@ -11,6 +12,7 @@ interface User {
   courses?: string[];
   skills?: string[];
   points: number;
+  hasFaceRecognition?: boolean;
 }
 
 interface PasswordData {
@@ -28,6 +30,9 @@ export default function ProfilePage() {
     confirmPassword: '',
   });
   const [error, setError] = useState<string>('');
+  const [showFaceRegistration, setShowFaceRegistration] = useState(false);
+  const [isRegisteringFace, setIsRegisteringFace] = useState(false);
+  const [isDeletingFace, setIsDeletingFace] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -159,6 +164,85 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Error updating password:', error);
       setError('Error updating password');
+    }
+  };
+
+  const handleFaceCaptured = async (descriptors: number[][]) => {
+    try {
+      setIsRegisteringFace(true);
+      const response = await fetch('/api/auth/face-register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ faceDescriptors: descriptors }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log('Face registration successful:', data);
+        setUser(prev => prev ? { ...prev, hasFaceRecognition: true } : null);
+        setShowFaceRegistration(false);
+        setIsRegisteringFace(false);
+        setError('');
+        // Update localStorage
+        const updatedUser = { ...user, hasFaceRecognition: true };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        // Show success message
+        const message = user.hasFaceRecognition 
+          ? `✅ Visage modifié avec succès!\n\n${data.descriptorsCount || 2} nouveaux échantillons ont été sauvegardés.\nVous pouvez maintenant vous connecter avec votre nouveau visage.`
+          : `✅ Visage enregistré avec succès!\n\n${data.descriptorsCount || 2} échantillons ont été sauvegardés.\nVous pouvez maintenant vous connecter avec la reconnaissance faciale.`;
+        alert(message);
+      } else {
+        const errorMsg = data.error || 'Erreur lors de l\'enregistrement du visage';
+        setError(errorMsg);
+        setIsRegisteringFace(false);
+        alert('❌ ' + errorMsg);
+      }
+    } catch (err: any) {
+      console.error('Error registering face:', err);
+      setError('Erreur lors de l\'enregistrement du visage');
+      setIsRegisteringFace(false);
+    }
+  };
+
+  const handleDeleteFace = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir désactiver la reconnaissance faciale ?\n\nVous devrez la réactiver pour utiliser cette fonctionnalité.')) {
+      return;
+    }
+
+    try {
+      setIsDeletingFace(true);
+      const response = await fetch('/api/auth/face-delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUser(prev => prev ? { ...prev, hasFaceRecognition: false } : null);
+        setError('');
+        // Update localStorage
+        const updatedUser = { ...user, hasFaceRecognition: false };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        alert('✅ Reconnaissance faciale désactivée avec succès!');
+      } else {
+        const errorMsg = data.error || 'Erreur lors de la désactivation';
+        setError(errorMsg);
+        alert('❌ ' + errorMsg);
+      }
+    } catch (err: any) {
+      console.error('Error deleting face:', err);
+      setError('Erreur lors de la désactivation');
+      alert('❌ Erreur lors de la désactivation');
+    } finally {
+      setIsDeletingFace(false);
     }
   };
 
@@ -492,6 +576,72 @@ export default function ProfilePage() {
                   <p className="text-gray-600">Aucune compétence ajoutée</p>
                 )}
               </div>
+            )}
+          </div>
+
+          {/* Face Recognition */}
+          <div className="p-4 hover:bg-gray-50 transition-colors duration-150">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 bg-cyan-50 rounded-md">
+                  <svg className="w-4 h-4 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-medium text-gray-900">Reconnaissance faciale</h3>
+              </div>
+              {user.hasFaceRecognition ? (
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 rounded-md">
+                    ✓ Activée
+                  </span>
+                  <button 
+                    onClick={() => setShowFaceRegistration(!showFaceRegistration)}
+                    disabled={isDeletingFace}
+                    className="px-3 py-1.5 text-sm font-medium text-orange-600 hover:text-orange-800 rounded-md hover:bg-orange-50 transition-colors duration-150 disabled:opacity-50"
+                  >
+                    {showFaceRegistration ? 'Annuler' : 'Modifier'}
+                  </button>
+                  <button 
+                    onClick={handleDeleteFace}
+                    disabled={isDeletingFace}
+                    className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-800 rounded-md hover:bg-red-50 transition-colors duration-150 disabled:opacity-50"
+                  >
+                    {isDeletingFace ? 'Suppression...' : 'Désactiver'}
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setShowFaceRegistration(!showFaceRegistration)}
+                  className="px-3 py-1.5 text-sm font-medium text-cyan-600 hover:text-cyan-800 rounded-md hover:bg-cyan-50 transition-colors duration-150"
+                >
+                  {showFaceRegistration ? 'Annuler' : 'Activer'}
+                </button>
+              )}
+            </div>
+            {showFaceRegistration && (
+              <div className="mt-4 space-y-3 bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-3">
+                  {user.hasFaceRecognition 
+                    ? 'Modifiez votre visage enregistré. L\'ancien sera remplacé par le nouveau.'
+                    : 'Enregistrez votre visage pour vous connecter rapidement sans mot de passe.'}
+                  <br />
+                  Assurez-vous d'être dans un endroit bien éclairé et de regarder directement la caméra.
+                </p>
+                <FaceCapture
+                  onFaceCaptured={handleFaceCaptured}
+                  onError={(err) => setError(err)}
+                  isCapturing={showFaceRegistration && !isRegisteringFace}
+                />
+                {isRegisteringFace && (
+                  <p className="text-sm text-blue-600 text-center">Enregistrement en cours...</p>
+                )}
+              </div>
+            )}
+            {user.hasFaceRecognition && (
+              <p className="mt-2 text-sm text-gray-600">
+                Vous pouvez vous connecter avec la reconnaissance faciale depuis la page de connexion.
+              </p>
             )}
           </div>
 

@@ -12,8 +12,8 @@ export async function GET(request: Request) {
     const user = await User.findById(payload.id).lean().exec();
     if (!user) return NextResponse.json({ user: null }, { status: 200 });
 
-    // sanitize
-    const { passwordHash, resetPasswordToken, verificationToken, ...safe } = user as any;
+    // sanitize - remove sensitive data including face descriptors
+    const { passwordHash, resetPasswordToken, verificationToken, faceDescriptors, ...safe } = user as any;
 
     // Explicitly disable any caching for this identity endpoint
     const res = NextResponse.json({ user: safe }, { status: 200 });

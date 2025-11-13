@@ -45,6 +45,9 @@ const UserSchema = new Schema({
     ip: { type: String },
     userAgent: { type: String }
   }],
+  // Face recognition data
+  faceDescriptors: [{ type: [Number] }], // Array of face descriptor arrays (128 dimensions each)
+  hasFaceRecognition: { type: Boolean, default: false },
   // Reviews left by other users about this user (as a rider/driver)
   reviews: [{
     authorId: { type: Schema.Types.ObjectId, ref: 'User' },
