@@ -288,7 +288,7 @@ export default function Header() {
         </div>
       </nav>
 
-  <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="nav-actions">
           <>
             {/* Notifications */}
             <div ref={notifyRef} style={{ position: 'relative', marginRight: 16 }}>

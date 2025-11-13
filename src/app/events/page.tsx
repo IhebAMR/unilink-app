@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import PageSection from '@/app/components/ui/PageSection';
 import EventCard, { Event } from '@/app/components/EventCard';
 import EventDetailModal from '@/app/components/EventDetailModal';
@@ -18,6 +19,7 @@ type EventTab = 'all' | 'my-events' | 'going' | 'not-going' | 'past';
 
 export default function EventsPage() {
   const networkOnline = useOnlineStatus();
+  const searchParams = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,16 +29,11 @@ export default function EventsPage() {
 
   // Check for eventId in URL params (from notification click)
   useEffect(() => {
-    try {
-      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const eventIdParam = params ? params.get('eventId') : null;
-      if (eventIdParam) {
-        setSelectedEventId(eventIdParam);
-      }
-    } catch (e) {
-      // ignore
+    const eventIdParam = searchParams.get('eventId');
+    if (eventIdParam) {
+      setSelectedEventId(eventIdParam);
     }
-  }, []);
+  }, [searchParams]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',

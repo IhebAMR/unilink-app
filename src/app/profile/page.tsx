@@ -181,17 +181,17 @@ export default function ProfilePage() {
 
       const data = await response.json();
 
-        if (response.ok) {
+      if (response.ok) {
         console.log('Face registration successful:', data);
         setUser(prev => prev ? { ...prev, hasFaceRecognition: true } : null);
         setShowFaceRegistration(false);
         setIsRegisteringFace(false);
         setError('');
-        // Update localStorage safely even if `user` is temporarily null
-        const updatedUser = { ...(user || {}), hasFaceRecognition: true };
+        // Update localStorage
+        const updatedUser = { ...user, hasFaceRecognition: true };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         // Show success message
-        const message = (user?.hasFaceRecognition)
+        const message = user.hasFaceRecognition 
           ? `✅ Visage modifié avec succès!\n\n${data.descriptorsCount || 2} nouveaux échantillons ont été sauvegardés.\nVous pouvez maintenant vous connecter avec votre nouveau visage.`
           : `✅ Visage enregistré avec succès!\n\n${data.descriptorsCount || 2} échantillons ont été sauvegardés.\nVous pouvez maintenant vous connecter avec la reconnaissance faciale.`;
         alert(message);

@@ -144,14 +144,17 @@ export default function FaceLogin({ onFaceVerified, onError, isVerifying = false
       const dataUrl = captureCanvas.toDataURL('image/png');
       setPreview(dataUrl);
 
-      // Use `any` for detection to avoid strict face-api typings issues in the build.
-      let detection: any | undefined;
+      let detection:
+        | faceapi.WithFaceDescriptor<
+            faceapi.WithFaceLandmarks<faceapi.FaceDetection, faceapi.FaceLandmarks68>
+          >
+        | undefined;
 
       for (const options of detectionAttempts) {
-        detection = await (faceapi
+        detection = await faceapi
           .detectSingleFace(captureCanvas, options)
           .withFaceLandmarks()
-          .withFaceDescriptor() as any);
+          .withFaceDescriptor();
 
         if (detection && detection.descriptor) {
           break;

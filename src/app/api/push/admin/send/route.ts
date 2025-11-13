@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     }
 
     // Check if user is admin
-    const userDoc: any = await User.findById(user.id).lean() as any;
+    const userDoc = await User.findById(user.id).lean();
     if (!userDoc || userDoc.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
@@ -36,12 +36,12 @@ export async function POST(request: Request) {
     }
 
     // Get all users with push subscriptions
-    const users: any[] = await User.find({
+    const users = await User.find({
       notificationTokens: { $exists: true, $ne: [] }
     }).lean();
 
-    const sent: string[] = [];
-    const errors: Array<{ userId: string; error: string }> = [];
+    const sent = [];
+    const errors = [];
 
     for (const targetUser of users) {
       if (!targetUser.notificationTokens || targetUser.notificationTokens.length === 0) {

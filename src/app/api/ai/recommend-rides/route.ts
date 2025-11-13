@@ -103,7 +103,7 @@ export async function GET(request: Request) {
 
         // Driver rating matching
         try {
-          const driver = await User.findById(ride.ownerId._id || ride.ownerId).lean() as any;
+          const driver = await User.findById(ride.ownerId._id || ride.ownerId).lean();
           if (driver && driver.reviews && driver.reviews.length > 0) {
             const avgRating = driver.reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / driver.reviews.length;
             if (avgRating >= 4.5) {

@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     // Find upcoming rides (not completed, not cancelled)
     // Include rides from 5 minutes ago to 24 hours from now (for testing flexibility)
-    const upcomingRides: any[] = await CarpoolRide.find({
+    const upcomingRides = await CarpoolRide.find({
       status: { $in: ['open', 'full'] },
       dateTime: { 
         $gte: fiveMinutesAgo,  // Include recent rides for testing
@@ -45,8 +45,8 @@ export async function POST(request: Request) {
       }
     }).populate('ownerId', 'name email notificationTokens').lean();
 
-    const notificationsSent: Array<{ userId: string; rideId: string; type: string }> = [];
-    const errors: Array<{ userId: string; error: string }> = [];
+    const notificationsSent = [];
+    const errors = [];
 
     for (const ride of upcomingRides) {
       const rideDate = new Date(ride.dateTime);
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
 
       // Send notification to ride owner
       if (ride.ownerId && ride.ownerId.notificationTokens) {
-        const owner: any = await User.findById(ride.ownerId._id).lean() as any;
+        const owner = await User.findById(ride.ownerId._id).lean();
         if (owner && owner.notificationTokens) {
           for (const token of owner.notificationTokens) {
             try {
@@ -114,14 +114,14 @@ export async function POST(request: Request) {
       }
 
       // Send notification to accepted passengers
-      const acceptedRequests: any[] = await RideRequest.find({
+      const acceptedRequests = await RideRequest.find({
         rideId: ride._id,
         status: 'accepted'
       }).populate('passengerId', 'name email notificationTokens').lean();
 
       for (const request of acceptedRequests) {
         if (request.passengerId && request.passengerId.notificationTokens) {
-          const passenger: any = await User.findById(request.passengerId._id).lean() as any;
+          const passenger = await User.findById(request.passengerId._id).lean();
           if (passenger && passenger.notificationTokens) {
             for (const token of passenger.notificationTokens) {
               try {

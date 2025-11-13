@@ -31,19 +31,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing rideId' }, { status: 400 });
     }
 
-    const ride: any = await CarpoolRide.findById(rideId)
+    const ride = await CarpoolRide.findById(rideId)
       .populate('ownerId', 'name email notificationTokens')
-      .lean() as any;
+      .lean();
 
     if (!ride) {
       return NextResponse.json({ error: 'Ride not found' }, { status: 404 });
     }
 
     // Check if user is admin, owner, or has accepted request
-  const userDoc: any = await User.findById(user.id).lean() as any;
-  const isAdmin = userDoc?.role === 'admin';
+    const userDoc = await User.findById(user.id).lean();
+    const isAdmin = userDoc?.role === 'admin';
     const isOwner = String(ride.ownerId._id || ride.ownerId) === String(user.id);
-    const hasAcceptedRequest: any = await RideRequest.findOne({
+    const hasAcceptedRequest = await RideRequest.findOne({
       rideId: rideId,
       passengerId: user.id,
       status: 'accepted'
@@ -81,12 +81,12 @@ export async function POST(request: Request) {
       }
     }
 
-  const notificationsSent: Array<{ userId: string; role: string }> = [];
-  const errors: Array<{ userId: string; error: string }> = [];
+    const notificationsSent = [];
+    const errors = [];
 
     // Send to owner
-      if (isOwner && ride.ownerId && ride.ownerId.notificationTokens) {
-      const owner: any = await User.findById(ride.ownerId._id).lean() as any;
+    if (isOwner && ride.ownerId && ride.ownerId.notificationTokens) {
+      const owner = await User.findById(ride.ownerId._id).lean();
       if (owner && owner.notificationTokens) {
         for (const token of owner.notificationTokens) {
           try {
@@ -125,9 +125,9 @@ export async function POST(request: Request) {
     }).populate('passengerId', 'name email notificationTokens').lean();
 
     for (const request of acceptedRequests) {
-  if (request.passengerId && request.passengerId.notificationTokens) {
-  const passenger: any = await User.findById(request.passengerId._id).lean() as any;
-  if (passenger && passenger.notificationTokens) {
+      if (request.passengerId && request.passengerId.notificationTokens) {
+        const passenger = await User.findById(request.passengerId._id).lean();
+        if (passenger && passenger.notificationTokens) {
           for (const token of passenger.notificationTokens) {
             try {
               const subscription = JSON.parse(token);

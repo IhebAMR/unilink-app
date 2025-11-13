@@ -69,8 +69,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ reply: 'Which ride would you like to book? Reply with: "Book ride RIDE_ID" (e.g. Book ride 69155ed1...)', structured: null, aiRaw: null, error: null });
     }
 
-  // find the ride
-  const ride = await CarpoolRide.findById(rideId).lean().exec() as any;
+    // find the ride
+    const ride = await CarpoolRide.findById(rideId).lean().exec();
     if (!ride) return NextResponse.json({ reply: `I couldn't find a ride with id ${rideId}. Please check the id and try again.`, structured: null, aiRaw: null, error: null });
     if (ride.seatsAvailable <= 0) return NextResponse.json({ reply: `Sorry, ride ${rideId} is full (no seats available).`, structured: { rideId, status: 'full' }, aiRaw: null, error: null });
 
@@ -192,7 +192,7 @@ export async function POST(req: Request) {
       ]
     };
 
-  rides = await CarpoolRide.find(q).limit(10).lean().exec() as any[];
+    rides = await CarpoolRide.find(q).limit(10).lean().exec();
   }
 
   // If no rides found for the exact day, try a relaxed search for the next 7 days
@@ -222,7 +222,7 @@ export async function POST(req: Request) {
       ]
     };
 
-  rides = await CarpoolRide.find(q2).sort({ dateTime: 1 }).limit(10).lean().exec() as any[];
+    rides = await CarpoolRide.find(q2).sort({ dateTime: 1 }).limit(10).lean().exec();
   }
 
   // Build a friendly reply

@@ -292,7 +292,7 @@ export default function RideDemandDetailPage() {
 
       {/* AI Matching Section - Show for owners of open demands */}
       {demand && demand.status === 'open' && isOwner && (
-  <PageSection {...({ id: 'ai-matches' } as any)} style={{ marginTop: 24 }}>
+        <PageSection id="ai-matches" style={{ marginTop: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
               <h2 style={{ margin: '0 0 4px 0', fontSize: '1.3rem' }}>

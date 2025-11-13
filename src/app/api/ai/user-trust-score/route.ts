@@ -26,15 +26,15 @@ export async function GET(
     const { userId } = resolvedParams;
 
     // Get user data
-  const user: any = await User.findById(userId).lean() as any;
+    const user = await User.findById(userId).lean();
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Get user's rides (as owner)
-    const rides: any[] = await CarpoolRide.find({
+    const rides = await CarpoolRide.find({
       ownerId: userId
-    }).lean() as any[];
+    }).lean();
 
     // Get user's reviews
     const reviews = user.reviews || [];

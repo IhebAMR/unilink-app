@@ -157,15 +157,17 @@ export default function FaceCapture({ onFaceCaptured, onError, isCapturing = fal
         new faceapi.TinyFaceDetectorOptions({ inputSize: 192, scoreThreshold: 0.5 }),
       ];
 
-      // face-api.js types are complex and sometimes mismatch the bundled definitions
-      // in environments here; use `any` for the detection result to avoid build-time
-      // type incompatibilities while preserving runtime behavior.
-      let detection: any | undefined;
+      let detection:
+        | faceapi.WithFaceDescriptor<
+            faceapi.WithFaceLandmarks<faceapi.FaceDetection, faceapi.FaceLandmarks68>
+          >
+        | undefined;
+
       for (const options of detectionOptions) {
-        detection = await (faceapi
+        detection = await faceapi
           .detectSingleFace(captureCanvas, options)
           .withFaceLandmarks()
-          .withFaceDescriptor() as any);
+          .withFaceDescriptor();
 
         if (detection && detection.descriptor) {
           break;
