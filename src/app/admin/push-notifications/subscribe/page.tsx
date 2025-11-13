@@ -19,13 +19,14 @@ export default function SubscribePushPage() {
 
   const checkSubscription = async () => {
     try {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      // Guard access to browser globals which are not available during server prerender
+      if (typeof window === 'undefined' || typeof navigator === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
         setStatus('Push notifications are not supported in this browser');
         setLoading(false);
         return;
       }
 
-      const permission = Notification.permission;
+      const permission = typeof Notification !== 'undefined' ? Notification.permission : 'default';
       if (permission === 'denied') {
         setStatus('Notifications are blocked. Please enable them in your browser settings.');
         setLoading(false);
@@ -114,8 +115,11 @@ export default function SubscribePushPage() {
     const base64 = (base64String + padding)
       .replace(/\-/g, '+')
       .replace(/_/g, '/');
-
-    const rawData = window.atob(base64);
+    // Use window.atob when available (client). Fall back to Buffer on server (shouldn't run on server,
+    // but guard to be safe during any accidental server evaluation).
+    const rawData = (typeof window !== 'undefined' && typeof window.atob === 'function')
+      ? window.atob(base64)
+      : Buffer.from(base64, 'base64').toString('binary');
     const outputArray = new Uint8Array(rawData.length);
 
     for (let i = 0; i < rawData.length; ++i) {
@@ -152,13 +156,13 @@ export default function SubscribePushPage() {
           <div style={{ marginTop: 16, padding: 16, backgroundColor: '#e8f5e9', borderRadius: 8, color: '#2e7d32' }}>
             <strong>✓ Subscribed!</strong>
             <p style={{ marginTop: 8, marginBottom: 0, fontSize: '0.9rem' }}>
-              Your subscription endpoint: {subscription.endpoint.substring(0, 50)}...
+                Your subscription endpoint: {subscription?.endpoint ? subscription.endpoint.substring(0, 50) : ''}...
             </p>
           </div>
         )}
       </PageSection>
 
-      {!subscription && Notification.permission !== 'denied' && (
+        {!subscription && (typeof Notification === 'undefined' || Notification.permission !== 'denied') && (
         <PageSection style={{ marginTop: 24 }}>
           <h2 style={{ marginTop: 0 }}>Subscribe Now</h2>
           <p>Click the button below to enable push notifications:</p>

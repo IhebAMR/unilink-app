@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import FaceCapture from '@/app/components/FaceCapture';
+import dynamic from 'next/dynamic';
+
+// Dynamically import the heavy client-only FaceCapture component to prevent
+// Next.js server-side bundling (this avoids server build errors like missing
+// "fs" from face-api.js). The component will only load in the browser.
+const FaceCapture = dynamic(() => import('@/app/components/FaceCapture'), { ssr: false });
 
 interface User {
   name: string;
