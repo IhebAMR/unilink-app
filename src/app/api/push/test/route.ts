@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userDoc = await User.findById(user.id).lean();
+    const userDoc: any = await User.findById(user.id).lean() as any;
     if (!userDoc || !userDoc.notificationTokens || userDoc.notificationTokens.length === 0) {
       return NextResponse.json({ 
         error: 'No push subscription found. Please allow notifications in your browser first.',
@@ -32,8 +32,8 @@ export async function GET(request: Request) {
       }, { status: 400 });
     }
 
-    const results = [];
-    const errors = [];
+  const results: string[] = [];
+  const errors: string[] = [];
 
     // Send test notification to all user's subscriptions
     for (const token of userDoc.notificationTokens) {

@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
     // Ensure the ride exists and is completed
     const CarpoolRide = (await import('@/app/models/CarpoolRide')).default;
-    const ride = await CarpoolRide.findById(relatedRide).lean();
+  const ride: any = await CarpoolRide.findById(relatedRide).lean() as any;
     if (!ride) return NextResponse.json({ error: 'Related ride not found' }, { status: 404 });
     // Only allow reviews for completed rides
     if (ride.status !== 'completed') return NextResponse.json({ error: 'Can only review after the trip is completed' }, { status: 400 });

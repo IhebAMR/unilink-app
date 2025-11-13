@@ -91,17 +91,19 @@ export async function POST(request: Request) {
         );
 
         // Calculate user compatibility (ratings)
-        let userMatch = { score: 50, driverRating: 0, passengerRating: 0, factors: [] };
+        let userMatch: { score: number; driverRating: number; passengerRating: number; factors: string[] } = { score: 50, driverRating: 0, passengerRating: 0, factors: [] };
         try {
-          const driver = await User.findById(ride.ownerId._id || ride.ownerId).lean();
-          const passenger = await User.findById(user.id).lean();
-          
+          // Use `any` here to avoid strict mongoose/lean typing issues in the build.
+          // We only need the `reviews` field if present.
+          const driver = await User.findById(ride.ownerId._id || ride.ownerId).lean() as any;
+          const passenger = await User.findById(user.id).lean() as any;
+
           if (driver && passenger) {
-            const driverReviews = driver.reviews || [];
-            const passengerReviews = passenger.reviews || [];
+            const driverReviews = (driver.reviews as any[]) || [];
+            const passengerReviews = (passenger.reviews as any[]) || [];
             userMatch = await calculateUserCompatibility(
               ride.ownerId._id || ride.ownerId,
-              user.id,
+              user.id!,
               driverReviews,
               passengerReviews
             );
@@ -175,7 +177,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Missing demandId parameter' }, { status: 400 });
     }
 
-    const demand = await RideDemand.findById(demandId).lean();
+  const demand = await RideDemand.findById(demandId).lean() as any;
     if (!demand) {
       return NextResponse.json({ error: 'Ride demand not found' }, { status: 404 });
     }

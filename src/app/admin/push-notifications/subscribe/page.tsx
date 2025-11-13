@@ -18,14 +18,14 @@ export default function SubscribePushPage() {
   }, []);
 
   const checkSubscription = async () => {
-    try {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      try {
+      if (typeof navigator === 'undefined' || !('serviceWorker' in navigator) || typeof window === 'undefined' || !('PushManager' in window)) {
         setStatus('Push notifications are not supported in this browser');
         setLoading(false);
         return;
       }
 
-      const permission = Notification.permission;
+      const permission = typeof Notification !== 'undefined' ? Notification.permission : 'default';
       if (permission === 'denied') {
         setStatus('Notifications are blocked. Please enable them in your browser settings.');
         setLoading(false);
@@ -54,8 +54,8 @@ export default function SubscribePushPage() {
     setError(null);
 
     try {
-      // Request notification permission
-      const permission = await Notification.requestPermission();
+  // Request notification permission (guard in case this ever runs server-side)
+  const permission = typeof Notification !== 'undefined' ? await Notification.requestPermission() : 'denied';
       
       if (permission !== 'granted') {
         setError('Notification permission was denied. Please allow notifications and try again.');
@@ -134,7 +134,7 @@ export default function SubscribePushPage() {
           <p style={{ margin: 0, fontWeight: 600 }}>{status}</p>
         </div>
 
-        {Notification.permission === 'denied' && (
+        {typeof Notification !== 'undefined' && Notification.permission === 'denied' && (
           <div style={{ marginTop: 16, padding: 16, backgroundColor: '#ffebee', borderRadius: 8, color: '#c62828' }}>
             <strong>⚠️ Notifications are blocked</strong>
             <p style={{ marginTop: 8, marginBottom: 0 }}>
@@ -158,7 +158,7 @@ export default function SubscribePushPage() {
         )}
       </PageSection>
 
-      {!subscription && Notification.permission !== 'denied' && (
+      {!subscription && (typeof Notification === 'undefined' || Notification.permission !== 'denied') && (
         <PageSection style={{ marginTop: 24 }}>
           <h2 style={{ marginTop: 0 }}>Subscribe Now</h2>
           <p>Click the button below to enable push notifications:</p>

@@ -64,9 +64,10 @@ export default function PushNotificationManager() {
         
         if (!subscription) {
           // Subscribe to push notifications
+          // Pass ArrayBuffer (underlying buffer) to satisfy TS/lib DOM typing
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: applicationServerKey
+            applicationServerKey: applicationServerKey.buffer ? applicationServerKey.buffer as ArrayBuffer : applicationServerKey as unknown as ArrayBuffer
           });
         }
 

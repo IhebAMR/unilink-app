@@ -31,7 +31,7 @@ export function findClosestPointOnRoute(
   point: { lat: number; lng: number }
 ): { point: [number, number]; distance: number; index: number } {
   let minDistance = Infinity;
-  let closestPoint: [number, number] = route[0];
+  let closestPoint: [number, number] = route[0] as [number, number];
   let closestIndex = 0;
 
   for (let i = 0; i < route.length; i++) {

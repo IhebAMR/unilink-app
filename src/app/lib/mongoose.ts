@@ -21,6 +21,19 @@ export async function dbConnect(): Promise<typeof mongoose> {
     throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
   }
 
+  // During static builds or CI we may not want to open a network connection to
+  // MongoDB (for example if IP allowlist blocks the build agent). Set
+  // SKIP_DB_ON_BUILD=true in your environment to skip attempting to connect
+  // during build/prerender steps. This will return the mongoose module as a
+  // no-op so code that imports it won't fail at module-evaluation time.
+  if (process.env.SKIP_DB_ON_BUILD === 'true') {
+    // Avoid trying to connect during build; callers should handle lack of
+    // a real connection gracefully when this flag is set.
+    // eslint-disable-next-line no-console
+    console.warn('dbConnect: SKIP_DB_ON_BUILD is set — skipping mongoose.connect()');
+    return mongoose;
+  }
+
   if (cached.conn) {
     return cached.conn;
   }
