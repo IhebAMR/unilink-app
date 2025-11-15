@@ -91,11 +91,9 @@ export default function PushNotificationManager() {
       }
     };
 
-    // Auto-subscribe if permission was already granted
-    if (Notification.permission === 'granted') {
-      subscribeToPush();
-    } else if (Notification.permission === 'default') {
-      // If permission hasn't been asked yet, request it
+    // Auto-subscribe if permission was already granted (guard for environments without Notification)
+    const perm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+    if (perm === 'granted' || perm === 'default') {
       subscribeToPush();
     } else {
       setIsLoading(false);

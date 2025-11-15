@@ -138,7 +138,7 @@ export default function SubscribePushPage() {
           <p style={{ margin: 0, fontWeight: 600 }}>{status}</p>
         </div>
 
-        {Notification.permission === 'denied' && (
+  {(typeof Notification !== 'undefined' && Notification.permission === 'denied') && (
           <div style={{ marginTop: 16, padding: 16, backgroundColor: '#ffebee', borderRadius: 8, color: '#c62828' }}>
             <strong>⚠️ Notifications are blocked</strong>
             <p style={{ marginTop: 8, marginBottom: 0 }}>
@@ -162,7 +162,7 @@ export default function SubscribePushPage() {
         )}
       </PageSection>
 
-        {!subscription && (typeof Notification === 'undefined' || Notification.permission !== 'denied') && (
+  {!subscription && (typeof Notification === 'undefined' || (typeof Notification !== 'undefined' && Notification.permission !== 'denied')) && (
         <PageSection style={{ marginTop: 24 }}>
           <h2 style={{ marginTop: 0 }}>Subscribe Now</h2>
           <p>Click the button below to enable push notifications:</p>

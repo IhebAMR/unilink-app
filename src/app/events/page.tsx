@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import PageSection from '@/app/components/ui/PageSection';
 import EventCard, { Event } from '@/app/components/EventCard';
@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 
 type EventTab = 'all' | 'my-events' | 'going' | 'not-going' | 'past';
 
-export default function EventsPage() {
+function EventsContent() {
   const networkOnline = useOnlineStatus();
   const searchParams = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
@@ -920,6 +920,14 @@ export default function EventsPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function EventsPage() {
+  return (
+    <Suspense fallback={<div />}> 
+      <EventsContent />
+    </Suspense>
   );
 }
 
