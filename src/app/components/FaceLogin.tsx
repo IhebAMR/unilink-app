@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import * as faceapi from 'face-api.js';
 import { loadFaceApiModels, areModelsLoaded } from '@/app/lib/face-api-models';
 
 interface FaceLoginProps {
@@ -10,11 +9,7 @@ interface FaceLoginProps {
   isVerifying?: boolean;
 }
 
-const detectionAttempts = [
-  new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.6 }),
-  new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }),
-  new faceapi.TinyFaceDetectorOptions({ inputSize: 192, scoreThreshold: 0.5 }),
-];
+// detectionAttempts will be created dynamically after importing face-api.js to avoid server bundling
 
 export default function FaceLogin({ onFaceVerified, onError, isVerifying = false }: FaceLoginProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -144,11 +139,15 @@ export default function FaceLogin({ onFaceVerified, onError, isVerifying = false
       const dataUrl = captureCanvas.toDataURL('image/png');
       setPreview(dataUrl);
 
-      let detection:
-        | faceapi.WithFaceDescriptor<
-            faceapi.WithFaceLandmarks<faceapi.FaceDetection, faceapi.FaceLandmarks68>
-          >
-        | undefined;
+      // Dynamically import face-api on the client when needed to avoid server bundling (and 'fs' errors)
+      const faceapi = await import('face-api.js');
+      const detectionAttempts: any[] = [
+        new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.6 }),
+        new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }),
+        new faceapi.TinyFaceDetectorOptions({ inputSize: 192, scoreThreshold: 0.5 }),
+      ];
+
+      let detection: any | undefined;
 
       for (const options of detectionAttempts) {
         detection = await faceapi
@@ -156,7 +155,7 @@ export default function FaceLogin({ onFaceVerified, onError, isVerifying = false
           .withFaceLandmarks()
           .withFaceDescriptor();
 
-        if (detection && detection.descriptor) {
+        if (detection?.descriptor) {
           break;
         }
       }

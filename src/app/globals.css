@@ -101,19 +101,124 @@ body {
 }
 
 .nav-link-primary {
-  background-color: var(--primary);
-  color: white !important;
+  /* keep a subtle emphasized style but not a boxed solid pill */
+  background: transparent;
+  color: var(--primary) !important;
+  border: 1px solid rgba(30,144,255,0.12);
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
 }
 
 .nav-link-primary:hover {
-  background-color: var(--primary-dark);
-  color: white !important;
+  background: rgba(30,144,255,0.06);
+  color: var(--primary-dark) !important;
 }
 
 .nav-actions {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+/* Make header action buttons and nav links a consistent size and alignment */
+.main-nav .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  min-height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  transition: background-color 0.15s, color 0.15s, transform 0.08s;
+}
+
+/* Primary nav link as a subtle pill (keeps prominence but not boxed feeling) */
+.main-nav .nav-link.nav-link-primary {
+  /* reinforce subtle primary appearance for nav when explicitly marked */
+  background: transparent;
+  color: var(--primary) !important;
+  border: 1px solid rgba(30,144,255,0.12);
+}
+
+.main-nav .nav-link:not(.nav-link-primary):hover {
+  background-color: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+/* Action icons (notifications, profile, install) should be minimal icon buttons */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.nav-actions > * {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+}
+
+.nav-actions > *:hover {
+  background-color: rgba(30,144,255,0.06);
+}
+
+/* Raised / elevated style for static buttons to improve discoverability */
+.btn,
+.nav-actions > *,
+.main-nav .nav-link,
+.login-button,
+.logout-button,
+.dropdown-item {
+  background: white;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+.btn:hover,
+.nav-actions > *:hover,
+.main-nav .nav-link:hover,
+.login-button:hover,
+.logout-button:hover,
+.dropdown-item:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+/* Make icon buttons perfectly circular and visually aligned */
+.nav-actions > * {
+  border-radius: 9999px;
+  padding: 0.45rem;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.dropdown-item {
+  border-radius: 8px;
+  background: white;
+}
+
+.nav-actions svg, .main-nav svg, .logo-link svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Make nav & action icons inherit color and be outlines by default (avoid filled circles) */
+.main-nav svg *, .nav-actions svg * {
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+/* Ensure action badges (notification count) don't change button height */
+.nav-actions span[style], .nav-actions .badge {
+  line-height: 1;
 }
 
 .login-button {

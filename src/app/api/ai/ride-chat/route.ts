@@ -89,6 +89,8 @@ export async function POST(req: Request) {
 
   // Try Hugging Face if configured, otherwise fallback to local parser
   const hfKey = process.env.HF_API_KEY || process.env.HUGGINGFACE_API_KEY;
+  let hfCallError: string | null = null;
+
   if (hfKey) {
     try {
       // Ask the model to extract structured fields where possible, but allow
@@ -115,8 +117,9 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json({ reply, structured, aiRaw, error: null });
-    } catch (err) {
-      console.warn('Hugging Face call failed, falling back to local parser:', err);
+    } catch (err: any) {
+      hfCallError = (err && err.message) ? err.message : String(err);
+      console.warn('Hugging Face call failed, falling back to local parser:', hfCallError);
     }
   }
 
@@ -124,19 +127,25 @@ export async function POST(req: Request) {
   const text = (message || '').toString();
   
 
-  // origin/destination: look for 'from X to Y'
+  // origin/destination: try several english and french patterns
   let origin: string | null = null;
   let destination: string | null = null;
-  const fromTo = /from\s+([^\n,]+?)\s+to\s+([^\n,]+?)(?:\s|$|\.|,)/i.exec(text);
-  if (fromTo) {
-    origin = fromTo[1].trim();
-    destination = fromTo[2].trim();
-  } else {
-    // try 'X to Y'
-    const toMatch = /([^\n,]+?)\s+to\s+([^\n,]+?)(?:\s|$|\.|,)/i.exec(text);
-    if (toMatch) {
-      origin = toMatch[1].trim();
-      destination = toMatch[2].trim();
+
+  const patterns = [
+    /from\s+([^\n,]+?)\s+to\s+([^\n,]+?)(?:\s|$|\.|,)/i,
+    /([^\n,]+?)\s+to\s+([^\n,]+?)(?:\s|$|\.|,)/i,
+    /de\s+([^\n,]+?)\s+à\s+([^\n,]+?)(?:\s|$|\.|,)/i,       // French 'de X à Y'
+    /du\s+([^\n,]+?)\s+au\s+([^\n,]+?)(?:\s|$|\.|,)/i,     // French 'du X au Y'
+    /([^\n,]+?)\s+[-→–]\s+([^\n,]+?)(?:\s|$|\.|,)/i,        // 'A - B' or arrows
+    /([^\n,]+?)\s+vers\s+([^\n,]+?)(?:\s|$|\.|,)/i         // 'X vers Y'
+  ];
+
+  for (const re of patterns) {
+    const m = re.exec(text);
+    if (m) {
+      origin = m[1].trim();
+      destination = m[2].trim();
+      break;
     }
   }
 
@@ -237,5 +246,5 @@ export async function POST(req: Request) {
     reply = "I couldn't understand your request. Try: 'I want a ride from Tunis to Sousse tomorrow at 9 AM'";
   }
 
-  return NextResponse.json({ reply, structured: { origin, destination, date: dateStr, time, passengerCount, rides }, error: null });
+  return NextResponse.json({ reply, structured: { origin, destination, date: dateStr, time, passengerCount, rides }, error: hfCallError });
 }

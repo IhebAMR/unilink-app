@@ -18,6 +18,18 @@ const nextConfig = {
   images: {
     domains: ['lh3.googleusercontent.com'],
   },
+  webpack: (config, { isServer }) => {
+    // Prevent server-side bundling from trying to resolve Node-only modules used
+    // by client-only libraries like `face-api.js` which attempt to require 'fs'.
+    config.resolve = config.resolve || {};
+    config.resolve.fallback = {
+      ...(config.resolve.fallback || {}),
+      fs: false,
+      path: false,
+      os: false,
+    };
+    return config;
+  },
 };
 
 module.exports = nextConfig;
